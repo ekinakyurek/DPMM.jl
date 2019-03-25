@@ -65,7 +65,7 @@ end
 end
 
 @inline posterior_predictive(m::DPGMM) = posterior_predictive(m.θprior)
-
+@inline posterior(m::DPGMM,T::DPGMMStats) =  posterior(m.θprior,T)
 @inline posterior(m::NormalInverseWishart{V},T::DPGMMStats{V}) where V<:Real =
     T.n!=0 ? NormalInverseWishart(_posterior(m,T)...) : m
 
