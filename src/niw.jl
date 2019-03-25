@@ -69,7 +69,7 @@ end
 function rand(niw::NormalInverseWishart)
     Σ   = rand(InverseWishart(niw.ν, niw.Ψ))
     μ   = rand(MvNormal(niw.μ, Σ ./ niw.λ))
-    return (μ, Σ)
+    return MvNormal(μ, Σ)
 end
 
 function insupport(::Type{NormalInverseWishart}, x::Vector{T}, Σ::Matrix{T}) where T<:Real

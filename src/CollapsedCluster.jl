@@ -1,6 +1,8 @@
 import Base: +,-, isempty
 
-struct CollapsedCluster{Pred<:Distribution, Prior<:Distribution}
+abstract type AbstractCluster end
+
+struct CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int
     predictive::Pred
     prior::Prior
@@ -29,6 +31,10 @@ end
 
 @inline pdf(m::CollapsedCluster,x) = pdf(m.predictive,x)
 @inline (m::CollapsedCluster)(x)   = m.n*pdf(m.predictive,x)
+
+CollapsedClusters(model::DPGMM, X::AbstractMatrix, z::Array{Int}) =
+    Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
+    
 #
 # function Base.hash(obj::CollapsedCluster, h::UInt)
 #     return hash((obj.n, obj.predictive), h)
