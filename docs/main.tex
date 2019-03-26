@@ -8,7 +8,8 @@
 \usepackage{amssymb,amsmath}
 \usepackage{mathtools}
 \usepackage{geometry}
-\geometry{a4paper, left=25mm, right=25mm, top=25mm,bottom=25mm}
+\geometry{a4paper, left=25mm, right=25mm, 
+                   top=25mm,  bottom=25mm}
 \usepackage{url}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -27,7 +28,8 @@
 \usepackage{float}
 \usepackage{courier}
 \usepackage{jlcode}
-\usepackage{minted}
+\usepackage{tikz}
+\usetikzlibrary{bayesnet}
 
 \title{DPMM.jl}
 \author{
@@ -40,6 +42,7 @@
 
 
 \begin{document}
+
 \maketitle
 
 \section{Introduction}
@@ -198,7 +201,9 @@ these two different representations are summarized by below graphical
 model representations. In the following section we will discuss how to
 do inference on DPMM.
 
-\includegraphics[width=\textwidth]{img/pgm-dpgmm.png}
+\input{dpmm_pgm.tex}
+
+%\includegraphics[width=\textwidth]{img/pgm-dpgmm.png}
 
 \subsection{Inference in DPMM}
 
@@ -920,6 +925,7 @@ end
     \includegraphics[width=\linewidth]{img/N100000K5K5alphaVD2.png}
      \caption{$N=100.000, K=4, D=2$}
   \end{subfigure}
+    \caption{Timing benchmarks of the algorithms}
 \end{figure}
 
 

@@ -1,0 +1,49 @@
+
+\begin{figure}[ht]
+  \begin{center}
+    \begin{tabular*}{0.7\textwidth}{c @{\extracolsep{\fill}} c}
+
+\begin{tikzpicture}
+  % Define nodes
+  \node[obs] (xi) {$x_i$}; %
+  \node[latent, above=of xi] (thetai) {$\theta_i$}; %
+  \node[latent, above=of thetai] (G) {$G$};
+  \node[det, left=of G] (alpha) {$\alpha$};
+  \node[det, above=of G] (G0) {$G_0$};
+  \edge[]{thetai}{xi};
+  \edge[]{G}{thetai};
+  \edge[]{alpha}{G};
+  \edge[]{G0}{G};
+  \plate{}{ %
+    (thetai)
+    (xi)
+  } {$N$} ;
+\end{tikzpicture}
+&
+\begin{tikzpicture}
+  % Define nodes
+  \node[obs] (xi) {$x_i$}; %
+  \node[latent, above=of xi] (zi) {$z_i$}; %
+  \node[latent, above=of zi] (pi) {$\pi$};
+  \node[det, left=of pi] (alpha) {$\alpha$};
+  \node[latent, right=of pi] (theta) {$\theta$};
+  \node[det, above=of theta] (G0) {$G_0$};
+  \edge[]{zi}{xi};
+  \edge[]{pi}{zi};
+  \edge[]{alpha}{pi};
+  \edge[]{theta}{xi};
+  \edge[]{G0}{theta};
+  \plate{xizi}{ %
+    (zi)
+    (xi)
+  } {$N$} ;
+  \plate{g0theate}{
+    (G0)
+    (theta)
+  }{$\infty$};
+\end{tikzpicture}
+
+    \end{tabular*}
+  \end{center}
+  \caption{Two equivalent graphical representation of DPMM}
+\end{figure}
