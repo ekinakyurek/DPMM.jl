@@ -659,10 +659,10 @@ end
 
 <sup>*</sup> Some macros (`@inline`,` @inbounds`), which makes code faster, are deleted in this documentation for clarity.
 
-[^Kamper, 2013]: [Kamper, Herman, Gibbs Sampling for Fitting Finite and Infinite Gaussian Mixture Models](https://www.kamperh.com/notes/kamper_bayesgmm13.pdf)
-[^Fang, 2016]: [Introduction to Dirichlet Process](https://www.stat.berkeley.edu/~blfang/expo/bnp_notes.pdf)
-[^Blei,2007]: [Bayesian Nonparametrics](https://www.cs.princeton.edu/courses/archive/fall07/cos597C/scribe/20070921.pdf)
-[^Blackwell, MacQueen, 1973]: [Ferguson Distributions Via Polya Urn Schemes](https://people.eecs.berkeley.edu/~jordan/courses/281B-spring04/readings/blackwell-macqueen.pdf)
-[^NormalInverseWishart, Wikipedia]: https://en.wikipedia.org/wiki/Normal-inverse-Wishart_distribution
-[^Inverse-Wishart, Wikipedia]: https://en.wikipedia.org/wiki/Wishart_distribution#Bartlett_decomposition
-[^Seeger, 2008]: [Low Rank Updates for the Cholesky Decomposition](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.585.5275&rep=rep1&type=pdf)
+[^Kamper, 2013]: [Kamper, Herman, Gibbs Sampling for Fitting Finite and Infinite Gaussian Mixture Models](https://www.kamperh.com/notes/kamper_bayesgmm13.pdf)    
+[^Fang, 2016]: [Introduction to Dirichlet Process](https://www.stat.berkeley.edu/~blfang/expo/bnp_notes.pdf)    
+[^Blei,2007]: [Bayesian Nonparametrics](https://www.cs.princeton.edu/courses/archive/fall07/cos597C/scribe/20070921.pdf)   
+[^Blackwell, MacQueen, 1973]: [Ferguson Distributions Via Polya Urn Schemes](https://people.eecs.berkeley.edu/~jordan/courses/281B-spring04/readings/blackwell-macqueen.pdf)   
+[^NormalInverseWishart, Wikipedia]: https://en.wikipedia.org/wiki/Normal-inverse-Wishart_distribution   
+[^Inverse-Wishart, Wikipedia]: https://en.wikipedia.org/wiki/Wishart_distribution#Bartlett_decomposition    
+[^Seeger, 2008]: [Low Rank Updates for the Cholesky Decomposition](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.585.5275&rep=rep1&type=pdf)   
