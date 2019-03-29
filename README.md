@@ -2,6 +2,8 @@
 
 This repository is a research work on parallel dirichlet process mixture models and clustering on Julia by Ekin Akyürek with supervision of John W. Fischer III. 
 
+Open this README in [Typora](https://typora.io) or another MathJax supported markdown application.
+
 ## Bacground
 
 ### 1. Mixture Models
