@@ -1,4 +1,19 @@
-import Distributions: suffstats
+using LinearAlgebra
+import Distributions: rand, suffstats, length
+
+struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
+    θprior::NormalInverseWishart{T}
+    α::T
+end
+
+@inline DPGMM{T,D}(α::T) where {T<:Real,D} =
+    DPGMM{T,dim}(NormalInverseWishart{T}(D),α)
+
+@inline DPGMM{T}(α::T,μ0::AbstractVector{T}) where T<:Real =
+    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0),α)
+
+@inline DPGMM{T}(α::T,μ0::AbstractVector{T},Σ0::AbstractMatrix{T}) where T<:Real =
+    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0),α)
 
 struct DPGMMStats{T<:Real}
     nμ::Vector{T}

@@ -6,10 +6,9 @@ do
 	do
 	  for D in 2 10 50
 		do
-	    	    julia direct_gibbs_parallel.jl --N $N --K $K --Kinit $K --alpha $alpha --D $D
+	    	    julia benchmark.jl --N $N --K $K --Kinit $K --alpha $alpha --D $D
 	            sleep 1
          	done
 	done
   done
 done
-

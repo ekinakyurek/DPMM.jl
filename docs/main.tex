@@ -30,6 +30,7 @@
 \usepackage{jlcode}
 \usepackage{tikz}
 \usetikzlibrary{bayesnet}
+\usepackage{ulem}
 
 \title{DPMM.jl}
 \author{
@@ -277,18 +278,29 @@ In the program we store \(\Psi_N\) cholesky factorized form to sample
 efficently. However, we need to calculate cholesk factorization,which is
 $\mathcal{O}(n^3)$, everytime if we remove or add single data point.
 For that case, there is a faster algorithm to compute updated cholesky
-factorization from the previous cholesky factorization\cite{Seeger:161468}. We utilize rank-1
-update and rank-1 downdate methods to speed up the collapsed gibbs
+factorization from the previous cholesky factorization\cite{Seeger:161468}. We utilize Rank-1
+update and Rank-1 downdate methods to speed up the collapsed gibbs
 sampler.
 
 
 \subsubsection{Multinomial Conjugate: Dirichlet Distribution}
 
-In discrete data setting, multinomial probabilty distribution is used
-for likelihood of data. Dirichlet distribution is the conjugate prior
-for multionomial distribution.
+In discrete data setting, multinomial probabilty distribution is used for likelihood of data. Dirichlet distribution is the conjugate prior for multinomial distribution.
 
-TODO
+Dirichlet distribution is parametrized by $\vec{\alpha}$ where $\vec{\alpha}_i$ corresponds to pseudocount of multinomial event $i$.
+
+The likelihood of the probabilities of a multinomial distribution given by Dirichlet prior is:
+\begin{equation*}
+f(p_{1},\ldots ,p_{K};\vec{\alpha}_{1},\ldots ,\vec{\alpha}_{K})=\frac {1}{\mathrm {B} ({\boldsymbol {\alpha }})} \prod _{i=1}^{K}p_{i}^{\vec{\alpha_{i}}-1}
+\end{equation*}
+
+Sufficient statistics $t$ for Dirichlet prior and multinomial distribution is the count vector of events $t=\vec{c}$ where:
+
+$$\vec{c}_i = \sum_{j=1}^N{\mathcal{X}_{ik}}$$
+
+Then, posterior distribution of Dirichlet is given by:
+
+$$\vec{\alpha}^\prime  = \vec{\alpha}+ \vec{c}$$
 
 
 \subsubsection{Collapsed Gibbs Sampler}
@@ -307,26 +319,31 @@ The likelihod of a new data \(x^*\) is given by:
 p(x^* | \mathcal{X}) = \frac{p(x^*,\mathcal{X})}{p(\mathcal{X})}
 \end{equation*}
 
-It turns out that the posterior likelihood (posterior-predictive) for a
-new data has Multivariate Student's t-distribution\cite{kamper2013gibbs}:
+It turns out that the posterior likelihood (posterior-predictive) of new data has Multivariate Student's t-distribution\cite{kamper2013gibbs} for NIW-Gaussian pair:
 \begin{equation*}
     p(x^*|\mathcal{X}) = \mathcal{T}(x^*|\boldsymbol \mu_N,\frac{(\lambda_N+1)}{\lambda_N(\nu_N-D+1)} \boldsymbol\Psi_N,\nu_n-D+1)
 \end{equation*}
-The inference in DP Gaussian Mixture Models can be done by using CRP
+
+The posterior predictive likelihood of Dirichlet-Multinomial pair has rather complicated function:
+\begin{equation*}
+     p(x^*|\mathcal{X}) = \frac{\Gamma(n+1)}{\prod_{j=1}^{K}\Gamma(x^*_j+1)} \frac{\Gamma(\sum_{j=1}^{K}\alpha^\prime_j)}{\prod_{j=1}^{K}\Gamma(\alpha^\prime_j)} 
+     \frac{\prod_{j=1}^{K}\Gamma(x^*_j+\alpha^\prime_j)}{\Gamma(n+\sum_{j=1}^{K}\alpha^\prime_j)}
+\end{equation*}
+
+The collapsed inference in DP Mixture Models can be done by using CRP
 procedure. The difference is that instead of using \(f(x|\theta_{z_i})\)
-likelihood, we use \(\mathcal{T}(x|\beta,\mathcal{X_{k \setminus i}})\)
+likelihood, we use $\mathcal{T}(x|\beta,\mathcal{X}_{k \setminus i})$
 posterior-predictive and we never sample \(\theta\)'s
 explicitly \cite{kamper2013gibbs}.
 
 \begin{align*}
 z_i|\boldsymbol z_{\setminus i}  &\sim \begin{cases}
-P(z_i=k)=\mathcal{T}(x|\beta,\mathcal{X}_{k \setminus i})\frac{N_{k\setminus i}}{i-1+\alpha} & \text{for an existing table/cluster} \\
-P(z_i=K+1)=\mathcal{T}(x|\beta)\frac{\alpha}{i-1+\alpha} & \text{for a new table/cluster}
+P(z_i=k)=\mathcal{T}(x|\beta,\mathcal{X}_{k \setminus i})\frac{N_{k\setminus i}}{N-1+\alpha} & \text{for an existing table/cluster} \\
+P(z_i=K+1)=\mathcal{T}(x|\beta)\frac{\alpha}{N-1+\alpha} & \text{for a new table/cluster}
 \end{cases}
 \end{align*}
 
-Below is the pseudocode\cite{kamper2013gibbs} for collapsed gibbs sampler for DP
-Gaussian Mixture Model. Multinomial example can easily be obtained by
+Pseudocode \cite{kamper2013gibbs} of collapsed gibbs sampler is presented in Algorithm \ref{collapsedgibbs} for Gaussian DPMMs, and the multinomial one can easily be obtained by
 changing posterior-predictive in the code.
 
 
@@ -343,10 +360,10 @@ changing posterior-predictive in the code.
             \State Calculate $p(\mathbf{x}_i|\mathcal{X}_{k\setminus i},\mathbf{\beta})$ using $\mathcal{T}$ distribution above
             \State Calculate $P(z_i = k | \mathbf{z}_{\setminus i},\mathcal{X},\alpha,\mathbf{\beta}) \propto P(z_i = k | \mathbf{z}_{\setminus i},\alpha) p(\mathbf{x}_i|\mathcal{X}_{k\setminus i}, \mathbf{\beta})$
         \EndFor
-        \State Calculate $P(z_i = k^* | \mathbf{z}_{\setminus i},\alpha) = \frac{\alpha}{N+\alpha-1}$ as in CRP \Comment{Consider opening a new cluster}
+        \State Calculate $P(z_i = K+1 | \mathbf{z}_{\setminus i},\alpha) = \frac{\alpha}{N+\alpha-1}$ as in CRP \Comment{Consider opening a new cluster}
         \State Calculate $p(\mathbf{x}_i|\mathbf{\beta})$ using $\mathcal{T}$ distribution above
-        \State Calculate $P(z_i = k^* | \mathbf{z}_{\setminus i},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = k^* | \mathbf{z}_{\setminus i},\alpha)p(\mathbf{x}_i|\mathbf{\beta})$
-        \State Sample $k_{new}$ from $P(z_i = k^* | \mathbf{z}_{\setminus i},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
+        \State Calculate $P(z_i = K+1 | \mathbf{z}_{\setminus i},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = K+1 | \mathbf{z}_{\setminus i},\alpha)p(\mathbf{x}_i|\mathbf{\beta})$
+        \State Sample $k_{new}$ from $P(z_i = k | \mathbf{z}_{\setminus i},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
         \State Add $z_i$'s statistics to the component $z_i = k_{new}$.\Comment{New assignment for $\mathbf{x}_i$}
         \State If any component is empty, remove it and decrease K
     \EndFor
@@ -361,36 +378,133 @@ changing posterior-predictive in the code.
 \item
   Collapsed sampler is hard to parallelize because in each data point we
   need update cluster statistics, and we don't know which cluster's
-  statistic will change beforehand.
+  statistic will change and what they will be beforehand.
 \item
   Collapsed sampler has some issues when it starts with under-estimated
   number of cluster. Closer clusters tend to form a single cluster in
   that situation.
 \end{itemize}
 
+\subsubsection{Quasi-Collapsed Gibbs Sampler}
+
+Note that in collapsed sampling every latent variable $z_i$ is connected with each other in the un-directed representation of DP.
+
+\begin{center}
+\begin{tikzpicture}
+  \node[obs] (z1) {$z_1$}; %
+  \node[obs, right=of z1] (z2) {$z_2$}; %
+  \node[obs, right=of z2] (empty) {...};
+  \node[obs, right=of empty] (zn) {$z_n$}; %
+  \draw[-, >=latex, draw=black, black, thick, controls=+(90:2) and +(90:2)] (z1.north) to (zn.north);
+  \draw[-, >=latex, draw=black, black, thick, controls=+(90:1) and +(90:1)] (z1.north) to (z2.north);
+  \draw[-, >=latex, draw=black, black, thick, controls=+(90:1) and +(90:1)] (z2.north) to (zn.north);
+  \draw[-, >=latex, draw=black, black, thick, controls=+(270:1) and +(270:1)] (empty.south) to (zn.south);
+   \draw[-, >=latex, draw=black, black, thick, controls=+(270:1) and +(270:1)] (empty.south) to (z2.south);
+\draw[-, >=latex, draw=black, black, thick, controls=+(270:1.5) and +(270:1.5)] (empty.south) to (z1.south);
+\end{tikzpicture}
+\end{center}
+
+So, it is not possible to sample $z_i$'s in parallel for an exact sampling. However, the affect of change in $z_i$ is negligible when $N \rightarrow \infty$. Therefore, we can break above connections for an approximate collapsed sampling algorithm which is parallelizable. It is also corresponds to deleting $4^{th}$ and $14^{th}$ lines, and calculation posterior-predictive distribution $\mathcal{T}$ before the iteration in Algorithm \ref{collapsedgibbs}. So, in this version of algorithm, instead of updating posterior-predictive for each data point, we update it only in the beginning of an iteration. The quasi-collapsed sampler algorithm is presented in Algorithm \ref{quasicollapsedgibbs} and sampling scheme is presented in the equation:
+
+\begin{align*}
+z_i|\boldsymbol z &\sim \begin{cases}
+P(z_i=k)=\mathcal{T}(x|\beta,\mathcal{X}_{k})\frac{N_{k}}{N+\alpha} & \text{for an existing table/cluster} \\
+P(z_i=K+1)=\mathcal{T}(x|\beta)\frac{\alpha}{N+\alpha} & \text{for a new table/cluster}
+\end{cases}
+\end{align*}
+
+\begin{algorithm}[H]
+  \caption{Quasi-Collapsed Gibbs sampler for an infinite Gaussian mixture model.}\label{quasicollapsedgibbs}
+  \begin{algorithmic}[1]
+  \State Choose an initial \textbf{z}.
+  \For{M iterations} \Comment{Gibbs Sampling Iterations}
+    \State \textcolor{red}{Update posterior-predictive $\mathcal{T}$ with \textbf{z}}
+    \For{i = 1 to N}
+        %\State \sout{Remove $\mathbf{x}_i's$ statistics from component $z_i$} \Comment{Old assignment for $\mathbf{x}_i$}
+        \For{k = 1 to K} \Comment{For all existing clusters}
+            \State Calculate $P(z_i = k | \mathbf{z},\alpha) = \frac{N_{k}}{N+\alpha}$ as in CRP
+            \State Calculate $p(\mathbf{x}_i|\mathcal{X}_{k},\mathbf{\beta})$ using posterior $\mathcal{T}$ distribution \textcolor{red}{with old assignments \textbf{z}}
+            \State Calculate $P(z_i = k | \mathbf{z},\mathcal{X},\alpha,\mathbf{\beta}) \propto P(z_i = k | \mathbf{z},\alpha) p(\mathbf{x}_i|\mathcal{X}_{k}, \mathbf{\beta})$
+        \EndFor
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\alpha) = \frac{\alpha}{N+\alpha}$ as in CRP \Comment{Consider opening a new cluster}
+        \State Calculate $p(\mathbf{x}_i|\mathbf{\beta})$ using $\mathcal{T}$ distribution above
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = K+1 | \mathbf{z},\alpha)p(\mathbf{x}_i|\mathbf{\beta})$
+        \State Sample $k_{new}$ from $P(z_i = k | \mathbf{z},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
+        %\State \sout{ Add $z_i$'s statistics to the component $z_i = k_{new}$.}\Comment{New assignment for $\mathbf{x}_i$}
+    \EndFor
+    \State If any component is empty, remove it and decrease K
+
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
 
 \subsubsection{Direct Gibbs Sampler}
 
-Another approach for gibbs sampler is direct sampler in which we
-explicitly sample \(\theta_k\) by the posterior for each existing
-cluster, then we calculate likelihood by cluster's likelihood function.
+Collapsed and Quasi-Collapsed algorithms are using CRP procedure to construct DP. However, there is another approach which we sample mixture weights and mixture parameters directly. There is an infinite mixtures however in DP, but we can combine mixtures for un-instantiated clusters together. So, $\pi_{K+1}$ is sum of all un-instantiated cluster weights and $\theta_{K+1}$ is sampled from base distribution for a new cluster. Direct sampler scheme is presented in the below:
+
+\begin{align*}
+\pi_1...,\pi_K, \pi_{K+1} &\sim Dir\big(\frac{N_1}{N+\alpha},...,\frac{N_K}{N+\alpha}, \frac{\alpha}{N+\alpha}\big) \\
+\theta_1...,\theta_K&\sim G_0(\theta|\boldsymbol z, \beta) \\
+z_i|\boldsymbol z &\sim \begin{cases}
+P(z_i=k)= f(X_i|\theta_{k})\pi_k & \text{for an existing cluster} \\
+P(z_i=K+1)= f(X_i|\theta_{K+1})\pi_{K+1}& \text{for a new cluster}
+\end{cases}\\
+\end{align*}
+
+\begin{algorithm}[H]
+  \caption{Direct Gibbs sampler for an infinite Gaussian mixture model.}\label{directgibbs}
+  \begin{algorithmic}[1]
+    
+  \State Choose an initial \textbf{z}.
+  \For{M iterations} \Comment{Gibbs Sampling Iterations}
+    \For{k = 1 to K} \Comment{For all existing clusters}
+            \State Sample $\theta_k \sim NIW(\theta|\beta,\mathcal{X}_{k})$ \Comment{if $N_k \neq 0$}
+    \EndFor
+    \State Sample $\pi_{1:K+1} \sim Dir\big(\frac{N_1}{N+\alpha},...,\frac{N_K}{N+\alpha}, \frac{\alpha}{N+\alpha}\big)$
+    \For{i = 1 to N}
+        \For{k = 1 to K} \Comment{For all existing clusters}
+            \State Calculate $P(z_i = k | \mathbf{z},\alpha) = \pi_k$ as in CRP
+            \State Calculate $p(\mathbf{x}_i|\mathbf{\theta}_k)$ using Gaussian distribution
+            \State Calculate $P(z_i = k | \mathbf{z},\mathcal{X},\alpha,\mathbf{\beta}) \propto P(z_i = k | \mathbf{z},\alpha)p(\mathbf{x}_i|\mathbf{\theta}_k)$
+        \EndFor
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\alpha) = \frac{\alpha}{N+\alpha}$ as in CRP \Comment{Consider opening a new cluster}
+        \State Calculate $p(\mathbf{x}_i|\theta_{K+1})$ using Gaussian distribution
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = K+1 | \mathbf{z},\alpha)p(\mathbf{x}_i|\mathbf{\theta}_{K+1})$
+        \State $z_i \gets k_{new}$ from $P(z_i = k | \mathbf{z},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
+    \EndFor
+  \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\paragraph{Parallelization}
+
+As it can be seen in pseudocode, direct sampler allows to sample each
+\(z_i\) asynchronously. This provide very good parallelization
+opportunity in large datasets. Results for parallel experiments
+discussed in \protect\hyperlink{ux20Results}{Results} section.
+
+\subsubsection{Quasi-Direct Gibbs Sampler}
+
+When $N \rightarrow \infty$, we can approximate $\pi_{1:K+1}$ with their proportions:
+$$\pi_i = \frac{N_i}{N+\alpha}$$
+
+So, we can get faster algorithm which skips sampling from Dirichlet process:
 
 \begin{align*}
 \theta_1...,\theta_K&\sim G_0(\theta|\boldsymbol z, \beta) \\
 z_i|\boldsymbol z_{\setminus i} &\sim \begin{cases}
-P(z_i=k)= f(X_i|\theta_{k})\frac{N_{k\setminus i}}{i-1+\alpha} & \text{for an existing cluster} \\
-P(z_i=K+1)= f(X_i|\theta)\frac{\alpha}{i-1+\alpha} & \text{for a new cluster}
+P(z_i=k)= f(X_i|\theta_{k})\frac{N_k}{N+\alpha} & \text{for an existing cluster} \\
+P(z_i=K+1)= f(X_i|\theta)\frac{\alpha}{N+\alpha} & \text{for a new cluster}
 \end{cases}\\
 \end{align*}
 
-For each iteration, we repeat these steps. Below is the direct gibbs
-sampler pseudocode DP Gaussian Mixture Model, and multinomial example
+We iteratively repeat above steps. Pseudocode of quasi-direct gibbs sampler presented in Algorithm \ref{quasi-directgibbs} for Gaussian DPMMs, and multinomial example
 can easily be obtained by changing posterior distribution in the
 pseudocode.
 
 
-\begin{algorithm}
-  \caption{Direct Gibbs sampler for an infinite Gaussian mixture model.}\label{directgibbs}
+\begin{algorithm}[H]
+  \caption{Quasi-Direct Gibbs sampler for an infinite Gaussian mixture model.}\label{quasi-directgibbs}
   \begin{algorithmic}[1]
     
   \State Choose an initial \textbf{z}.
@@ -400,14 +514,14 @@ pseudocode.
     \EndFor
     \For{i = 1 to N}
         \For{k = 1 to K} \Comment{For all existing clusters}
-            \State Calculate $P(z_i = k | \mathbf{z}_{\setminus i},\alpha) = \frac{N_{k\setminus i}}{N+\alpha-1}$ as in CRP
+            \State Calculate $P(z_i = k | \mathbf{z},\alpha) = \frac{N_{k}}{N+\alpha}$ as in CRP
             \State Calculate $p(\mathbf{x}_i|\mathbf{\theta}_k)$ using Gaussian distribution
-            \State Calculate $P(z_i = k | \mathbf{z}_{\setminus i},\mathcal{X},\alpha,\mathbf{\beta}) \propto P(z_i = k | \mathbf{z}_{\setminus i},\alpha)p(\mathbf{x}_i|\mathbf{\theta}_k)$
+            \State Calculate $P(z_i = k | \mathbf{z},\mathcal{X},\alpha,\mathbf{\beta}) \propto P(z_i = k | \mathbf{z},\alpha)p(\mathbf{x}_i|\mathbf{\theta}_k)$
         \EndFor
-        \State Calculate $P(z_i = k^* | \mathbf{z}_{\setminus i},\alpha) = \frac{\alpha}{N+\alpha-1}$ as in CRP \Comment{Consider opening a new cluster}
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\alpha) = \frac{\alpha}{N+\alpha}$ as in CRP \Comment{Consider opening a new cluster}
         \State Calculate $p(\mathbf{x}_i|\theta^*)$ using Gaussian distribution
-        \State Calculate $P(z_i = k^* | \mathbf{z}_{\setminus i},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = k^* | \mathbf{z}_{\setminus i},\alpha)p(\mathbf{x}_i|\mathbf{\theta}^*)$
-        \State $z_i \gets k_{new}$ from $P(z_i = k^* | \mathbf{z}_{\setminus i},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
+        \State Calculate $P(z_i = K+1 | \mathbf{z},\mathcal{X},\alpha, \mathbf{\beta}) \propto P(z_i = K+1 | \mathbf{z},\alpha)p(\mathbf{x}_i|\mathbf{\theta}_{K+1})$
+        \State $z_i \gets k_{new}$ from $P(z_i = k | \mathbf{z},\mathcal{X},\mathbf{\alpha},\mathbf{\beta})$ after normalizing
     \EndFor
   \EndFor
   \end{algorithmic}
@@ -417,7 +531,7 @@ pseudocode.
 
 \paragraph{Parallelization}
 
-As it can be seen in pseudocode, directs Sampler allows to sample each
+As it can be seen in pseudocode, quasi-direct sampler allows to sample each
 \(z_i\) asynchronously. This provide very good parallelization
 opportunity in large datasets. Results for parallel experiments
 discussed in \protect\hyperlink{ux20Results}{Results} section.
@@ -427,11 +541,8 @@ discussed in \protect\hyperlink{ux20Results}{Results} section.
 
 \begin{itemize}
 \item
-  Direct sampler is easy to parallelize as discussed in above. Even
-  without parallelizing, direct sampler faster than collapsed sampler.
-\item
-  Direct sampler is better when it starts with under-estimated number of
-  clusters?
+  Quasi-Direct sampler is easy to parallelize as discussed in above. Even
+  without parallelizing, quasi-direct sampler faster than collapsed sampler.
 \end{itemize}
 
 
@@ -775,22 +886,20 @@ function place_x!(model::DPGMM,clusters::Dict,knew::Int,xi::AbstractVector)
 end
 \end{lstlisting}
 
+\subsection{Quasi-Collapsed Gibbs Sampler}
+Quasi-Collapsed sampler algorithm is differs collapsed sample by deleting single-data point updates to clusters, and adding \texttt{CollapsedCluster} calculation before each iteration.
 
-\subsection{Direct Gibbs Sampler}
-
-The main code for directed gibbs sampler is presented in below* .
 \begin{lstlisting}
-clusters = DirectClusters(model,X,labels) # current clusters
-cluster0 = DirectCluster(model)  # empty cluster
+clusters = CollapsedClusters(model,X,labels) # current clusters
+cluster0 = CollapsedCluster(model)  # empty cluster
 for t in 1:T
-    record!(observables,labels,t)
     for i=1:N
         x =  X[:,i]
         probs     = CRPprobs(model,clusters,cluster0,x) # CRP Probabilities
         znew      =~ Categorical(probs,NoArgCheck()) # new label
         labels[i] = label_x(clusters,znew)
     end
-    clusters = DirectClusters(model,X,labels) # TODO handle empty clusters
+    clusters = CollapsedClusters(model,X,labels) # TODO handle empty clusters
 end
 return labels
 \end{lstlisting}
@@ -807,13 +916,74 @@ function label_x(clusters::Dict,knew::Int)
 end
 \end{lstlisting}
 
+\subsection{Direct Gibbs Sampler}
+In direct sampler we will use \texttt{DirectCluster} which keeps sampled cluster parameters. We will sample mixture weights in the beginning of each iteration:
+
+\begin{lstlisting}
+clusters = DirectClusters(model,X,labels) # current clusters
+cluster0 = DirectCluster(model)  # empty cluster
+for t in 1:T
+    πs  = mixture_πs(model,clusters) # unnormalized weights
+    for i=1:N
+        x =  X[:,i]
+        probs     = ClusterProbs(πs,clusters,cluster0,x) # cluster likelihoods
+        znew      =~ Categorical(probs,NoArgCheck()) # new label
+        labels[i] = label_x(clusters,znew)
+    end
+    clusters = DirectClusters(model,X,labels) # TODO handle empty clusters
+end
+return labels
+\end{lstlisting}
+
+\texttt{ClusterProbs} calculates likelihood according to given $\pi's$ which are sampled from Dirichlet prior:
+
+\begin{lstlisting}[linewidth=17cm]
+function ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster,
+x::AbstractVector{V}) where V<:Real
+    probs = Array{V,1}(undef,length(clusters)+1)
+    for (j,c) in enumerate(values(clusters))
+        @inbounds probs[j] = πs[j]*pdf(c,x)
+    end
+    probs[end] = πs[end]*pdf(cluster0,x)
+    return probs/sum(probs)
+end
+\end{lstlisting}
+
+\begin{lstlisting}[linewidth=16cm]
+function mixture_πs(model::DPGMM{V}, clusters::Dict) where V<:Real
+    return ~Dirichlet([(c.n for c in values(clusters))...;model.α])
+end
+\end{lstlisting}
+
+
+\subsection{Quasi-Direct Gibbs Sampler}
+
+The main code for quasi-direct gibbs sampler is presented in below. It differs from direct gibbs sampler by skipping mixture weight sampling. It instead use CRP weights to as described in Algorithm \ref{quasi-directgibbs}.
+
+\begin{lstlisting}
+clusters = DirectClusters(model,X,labels) # current clusters
+cluster0 = DirectCluster(model)  # empty cluster
+for t in 1:T
+    record!(observables,labels,t)
+    for i=1:N
+        x =  X[:,i]
+        probs     = CRPprobs(model,clusters,cluster0,x) # CRP Probabilities
+        znew      =~ Categorical(probs,NoArgCheck()) # new label
+        labels[i] = label_x(clusters,znew)
+    end
+    clusters = DirectClusters(model,X,labels) # TODO handle empty clusters
+end
+return labels
+\end{lstlisting}
+
+
 
 \section{Parallel Algorithms}
 
 
-\subsection{Parallel Direct Gibbs Sampler}
+\subsection{Data Sharing}
 
-As explained in the previous sections, direct gibbs sampler is
+As explained in the previous sections, quasi-direct gibbs sampler is
 parallelizable throughout the data points. Julia's \texttt{Distributed}
 and \texttt{SharedArrays} modules are used for the implementation. Our
 aim is minimizing communication between \texttt{main} and
@@ -851,13 +1021,61 @@ the range of indices they are responsible for. Therefore, we created a
 shared_labels = SharedArray(plabels)
 \end{lstlisting}
 
+
+\subsection{Quasi-Collapsed Gibbs Sampler}
+We define a quasi-collapsed gibbs sampler iteration function with specific range
+of indices:
+\begin{lstlisting}[linewidth=17cm]
+function quasi_collapsed_parallel!(model, X, range, labels, clusters, empty_cluster)
+    for i in range
+        probs      = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
+        znew       =~ Categorical(probs,NoArgCheck()) # new label
+        labels[i]  = label_x(clusters,znew)
+    end
+end
+\end{lstlisting}
+
+We also need a caller function for each worker which call
+\texttt{quasi\_collapsed\_parallel!} with its range:
+\begin{lstlisting}
+@inline quasi_collapsed_gibbs_parallel!(labels, clusters) =
+
+    quasi_collapsed_parallel!(Main.model,Main.X,localindices(labels),labels,clusters,Main.empty_cluster)
+\end{lstlisting}
+
+
+The only thing remains to be shared in each iteration is
+\texttt{clusters}. Clusters are updated posterior parameters, so we
+need update them in main node, then send each worker. We will use
+\texttt{remotecall} utility of julia to call
+\texttt{quasi\_collapsed\_gibbs\_parallel!} while sending \texttt{clusters} at the
+same time. So, this what main body of the parallel direct gibbs sampler:
+
+\begin{lstlisting}
+function quasi_collapsed_gibbs_parallel!(model, X, clusters, labels::SharedArray; observables=nothing, T=10)
+    for t=1:T
+        record!(observables,labels,t)
+        @sync begin
+            for p in procs(labels)
+                @async remotecall_wait(quasi_collapsed_gibbs_parallel!,p,labels,clusters)
+            end
+        end
+        clusters = CollapsedClusters(model,X,labels)
+    end
+end
+
+\end{lstlisting}
+
+
+
+\subsection{Direct Gibbs Sampler}
 We define a direct gibbs sampler iteration function with specific range
 of indices:
 \begin{lstlisting}[linewidth=17cm]
-function direct_parallel!(model, X, range, labels::SharedArray, clusters, empty_cluster)
+function direct_parallel!(πs, X, range, labels, clusters, empty_cluster)
     for i in range
-        probs      = CRPprobs(model,clusters,empty_cluster,X[:,i])
-        znew       =~ Categorical(probs,NoArgCheck())
+        probs      = ClusterProbs(πs,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
+        znew       =~ Categorical(probs,NoArgCheck()) # new label
         labels[i]  = label_x(clusters,znew)
     end
 end
@@ -866,9 +1084,10 @@ end
 We also need a caller function for each worker which call
 \texttt{direct\_parallel!} with its range:
 \begin{lstlisting}
-function direct_gibbs_parallel!(labels, clusters) 		   			
-    direct_parallel(model,X,localindices(labels),labels,clusters,empty_cluster)
-end 
+@inline direct_gibbs_parallel!(labels, clusters, πs) =
+
+    direct_parallel!(πs,Main.X,localindices(labels),labels,clusters,Main.empty_cluster)
+
 \end{lstlisting}
 
 
@@ -880,11 +1099,55 @@ need sample them in main node, then send each worker. We will use
 same time. So, this what main body of the parallel direct gibbs sampler:
 
 \begin{lstlisting}
-function direct_gibbs_parallel!(model, X, clusters, labels::SharedArray; T=10)
+function direct_gibbs_parallel!(model, X, clusters, labels::SharedArray; observables=nothing, T=10)
+    for t=1:T
+        record!(observables,labels,t)
+        πs = mixture_πs(model,clusters) # unnormalized weights
+        @sync begin
+            for p in procs(labels)
+                @async remotecall_wait(direct_gibbs_parallel!,p,labels,clusters,πs)
+            end
+        end
+        clusters = DirectClusters(model,X,labels)
+    end
+end
+\end{lstlisting}
+
+\subsection{Quasi-Direct Gibbs Sampler}
+We define a quasi-direct gibbs sampler iteration function with specific range
+of indices:
+\begin{lstlisting}[linewidth=17cm]
+function quasidirect_parallel!(model, X, range, labels::SharedArray, clusters, empty_cluster)
+    for i in range
+        probs      = CRPprobs(model,clusters,empty_cluster,X[:,i])
+        znew       =~ Categorical(probs,NoArgCheck())
+        labels[i]  = label_x(clusters,znew)
+    end
+end
+\end{lstlisting}
+
+We also need a caller function for each worker which call
+\texttt{quasidirect\_parallel!} with its range:
+\begin{lstlisting}
+function quasidirect_gibbs_parallel!(labels, clusters) 		   			
+    quasidirect_parallel(model,X,localindices(labels),labels,clusters,empty_cluster)
+end 
+\end{lstlisting}
+
+
+The only thing remains to be shared in each iteration is
+\texttt{clusters}. Clusters are sampled \(\theta\) parameters, so we
+need sample them in main node, then send each worker. We will use
+\texttt{remotecall} utility of julia to call
+\texttt{quasidirect\_gibbs\_parallel!} while sending \texttt{clusters} at the
+same time. So, this what main body of the parallel quasi-direct gibbs sampler:
+
+\begin{lstlisting}
+function quasidirect_gibbs_parallel!(model, X, clusters, labels::SharedArray; T=10)
     for t=1:T
         @sync begin
             for p in procs(labels)
-                @async remotecall_wait(direct_gibbs_parallel!,p,labels,clusters)
+                @async remotecall_wait(quasidirect_gibbs_parallel!,p,labels,clusters)
             end
         end
         clusters = DirectClusters(model,X,labels)

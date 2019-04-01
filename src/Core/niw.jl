@@ -32,6 +32,9 @@ NormalInverseWishart{T}(n::Int) where T<:Real =
 NormalInverseWishart{T}(mean::AbstractArray{T}) where T<:Real =
     NormalInverseWishart(mean,T(1),Matrix{T}(I,length(mean),length(mean)),T(length(mean))+3)
 
+NormalInverseWishart{T}(mean::AbstractArray{T}, cov::AbstractMatrix{T}) where T<:Real =
+    NormalInverseWishart(mean,T(1),cov,T(length(mean))+3)
+
 params(niw::NormalInverseWishart) = (niw.μ, niw.Ψ, niw.λ, niw.ν)
 pdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real = exp(logpdf(niw, x, Σ))
 

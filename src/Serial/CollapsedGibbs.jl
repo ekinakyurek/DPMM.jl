@@ -8,6 +8,7 @@ function collapsed_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::In
     collapsed_gibbs!(model, X, labels, clusters, cluster0; T=T, observables=observables)
     return labels
 end
+
 function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
     for t in 1:T
         record!(observables,labels,t)
@@ -22,7 +23,7 @@ function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_clus
     end
 end
 init(X::AbstractMatrix{V}, α::Real, ninit::Int) where V<:Real =
-    size(X),rand(1:ninit,size(X,2)),DPGMM{V}(V(α), vec(mean(X,dims=2)))
+    size(X),rand(1:ninit,size(X,2)),DPGMM{V}(V(α), vec(mean(X,dims=2)), (X*X')/size(X,2))
 
 function CRPprobs(model::DPGMM{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     probs = Array{V,1}(undef,length(clusters)+1)

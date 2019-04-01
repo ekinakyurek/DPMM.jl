@@ -1,7 +1,8 @@
 using Pkg; Pkg.activate("..")
 using Distributed, DPMM, Distributions, ArgParse
 import DPMM: init, DirectClusters, DirectCluster, direct_gibbs_parallel!,
-            direct_gibbs!, collapsed_gibbs!
+            direct_gibbs!, collapsed_gibbs! quasi_collapsed_gibbs!,
+            quasi_direct_gibbs_parallel!, quasi_direct_gibbs!
 
 function parser(args)
     s = ArgParseSettings()
@@ -80,10 +81,10 @@ empty_collapsed_cluster = CollapsedCluster(dpmm)
 shared_labels = SharedArray(plabels)
 
 # Cold run: Let Julia to compile all functions
-direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=2)
+quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=2)
 # Benchmark
 shared_labels = SharedArray(plabels)
-dgptime = @elapsed direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=𝒪[:T])
+dgptime = @elapsed quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=𝒪[:T])
 
 # Comparison
 
@@ -94,6 +95,15 @@ direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=2)
 ### Benchmark
 plabels_copy  = copy(plabels)
 dgtime = @elapsed direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
+
+
+## Quasi-Direct Sampler
+### Cold run
+plabels_copy  = copy(plabels)
+quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=2)
+### Benchmark
+plabels_copy  = copy(plabels)
+dgtime = @elapsed quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
 
 ## Collapsed Sampler
 ### Cold run
