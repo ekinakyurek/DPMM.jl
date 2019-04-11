@@ -14,7 +14,7 @@ function parser(args)
      "--alpha"
          help = "DPMM model parameter"
          arg_type = Float64
-         default = 1.0
+         default = 500.0
      "--K"
          help = "number of mixtures"
          arg_type = Int
@@ -61,8 +61,8 @@ end
 @everywhere begin
     const α     = $𝒪[:alpha]
     const X     = $data
-    const D     = $𝒪[:D]
-    const N     = $𝒪[:N]
+    const D     = $Dx
+    const N     = $Nx
     const model = $dpmm
     const empty_cluster = $cluster0
 end
