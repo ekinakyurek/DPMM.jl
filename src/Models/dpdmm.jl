@@ -46,4 +46,4 @@ end
 @inline posterior(m::DirMul{V}, T::DPDMMStats{V}) where V<:Real = T.n!=0 ? DirMul{V}(_posterior(m,T)) : m
 
 init(X::AbstractMatrix{<:Integer}, α::V, ninit::Int, T::Type{<:DPDMM}) where V<:Real =
-    size(X),rand(1:ninit,size(X,2)),T(α, V.(sumcol(X)) .+ 1)
+    size(X),rand(1:ninit,size(X,2)),T(α,sumcol(X) .+ V(1))

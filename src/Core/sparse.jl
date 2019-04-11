@@ -1,6 +1,6 @@
 using SparseArrays, Distributions
 import Base: size, +, -, *, getindex, sum, length
-import SparseArrays: AbstractSparseMatrix, AbstractSparseVector
+import SparseArrays: AbstractSparseMatrix, AbstractSparseVector, nonzeroinds, nonzeros
 import Distributions: _logpdf, lgamma, xlogy
 
 struct DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
@@ -36,6 +36,19 @@ end
 @inline length(x::DPSparseVector) = x.n
 @inline getindex(X::DPSparseMatrix, ::Colon, inds::Vector{<:Integer}) = DPSparseMatrix(X.m,length(inds),X.data[inds])
 @inline getindex(X::DPSparseMatrix, ::Colon, ind::Integer) = X.data[ind]
+@inline getindex(X::DPSparseMatrix, ind1::Integer, ind2::Integer) = X.data[ind2][ind1]
+@inline nonzeroinds(x::DPSparseVector) = x.nzind
+@inline nonzeros(x::DPSparseVector)    = x.nzval
+
+function getindex(x::DPSparseVector{Tv,<:Any}, ind::Integer) where Tv
+    inds = x.nzind
+    i = findfirst(x->x==ind,inds)
+    if i===nothing
+        return Tv(0)
+    else
+        return x.nzval[i]
+    end
+end
 
 function sumcol(X::DPSparseMatrix{Tv,<:Any}) where Tv
     y = zeros(Tv,X.m)
@@ -57,15 +70,15 @@ function add!(x::AbstractVector, y::DPSparseVector)
     return x
 end
 
-@inline add!(x,y) = x+y
-@inline substract!(x,y) = x-y
-
 function substract!(x::AbstractVector, y::DPSparseVector)
     for (i,index) in enumerate(y.nzind)
       @inbounds x[index] -= y.nzval[i]
     end
     return x
 end
+
+@inline add!(x,y) = x+y
+@inline substract!(x,y) = x-y
 
 function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
     p = probs(d)
@@ -82,5 +95,18 @@ function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
     return s
 end
 
-
-
+# FIXME: This is not good!
+function _logpdf(d::Multinomial, x::AbstractVector{T}) where T<:Real
+    p = probs(d)
+    n = sum(x)
+    S = eltype(p)
+    R = promote_type(T, S)
+    s = R(lgamma(n + 1))
+    for i = 1:length(p)
+        @inbounds xi = x[i]
+        @inbounds p_i = p[i]
+        s -= R(lgamma(R(xi) + 1))
+        s += xlogy(xi, p_i)
+    end
+    return s
+end

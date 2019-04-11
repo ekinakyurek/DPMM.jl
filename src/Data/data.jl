@@ -1,6 +1,6 @@
 import Distributions:  _rand!
 
-function createΣ(T,d...;α=0.1)
+function createΣ(T,d...;α=0.01)
      σ = α*randn(T,d...)
      return σ*σ'
 end
@@ -40,4 +40,9 @@ end
     w = Matrix{T}(undef,length(d),n)
     c = _rand_with_label!(d,w)
     return w,c
+end
+
+function GridMultinomial(πs::Vector{T}=[0.4,0.4,0.2]) where T<:Real
+    comps = [Multinomial(2,[1.0,0.0]), Multinomial(2,[0.0,1.0]), Multinomial(2,[0.5,0.5])]
+    return MixtureModel(vec(comps),πs)
 end
