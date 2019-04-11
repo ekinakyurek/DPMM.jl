@@ -1,5 +1,5 @@
 using LinearAlgebra, PDMats
-import Distributions: rand, pdf
+import Distributions: rand, pdf, params
 
 struct NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistribution
     μ::Vector{T}

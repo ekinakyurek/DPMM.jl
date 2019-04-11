@@ -1,6 +1,6 @@
-function quasi_collapsed_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::Int=6, observables=nothing)
+function quasi_collapsed_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::Int=6, observables=nothing, modelType=DPGMM{Float64})
     #Initialization
-    (D,N),labels,model = init(X,α,ninit)
+    (D,N),labels,model = init(X,α,ninit,modelType)
     #Get Clusters
     clusters = CollapsedClusters(model,X,labels) # current clusters
     cluster0 = CollapsedCluster(model)  # empty cluster

@@ -1,16 +1,16 @@
 using LinearAlgebra
-import Distributions: rand, suffstats, length
+import Distributions: rand, suffstats, length, SufficientStats
 
 struct DPDMM{T<:Real,D} <: AbstractDPModel{T,D}
-    θprior::Dirichlet{T}
+    θprior::DirMul{T}
     α::T
 end
 
-@inline DPDMM{T,D}(α::T) where {T<:Real,D} = DPDMM{T,dim}(Dirichlet{T}(ones(D),α))
+@inline DPDMM{T,D}(α::T) where {T<:Real,D} = DPDMM{T,dim}(DirMul{T}(ones(D),α))
 
-@inline DPDMM{T}(α::T,alphas::AbstractVector{T}) where T<:Real = DPDMM{T,length(alphas)}(Dirichlet{T}(alphas),α)
+@inline DPDMM{T}(α::T,alphas::AbstractVector{T}) where T<:Real = DPDMM{T,length(alphas)}(DirMul{T}(alphas),α)
 
-struct DPDMMStats{T<:Real}
+struct DPDMMStats{T<:Real} <: SufficientStats
     s::Vector{Int}
     n::Int
 end
@@ -19,28 +19,28 @@ end
     DPDMMStats{T}(zeros(Int,D),0)
 
 @inline suffstats(m::DPDMM{T},X::AbstractMatrix{Int}) where T<:Real =
-    DPDMMStats{T}(vec(sum(X,dims=2)),size(X,2))
+    DPDMMStats{T}(sumcol(X),size(X,2))
 
 @inline suffstats(m::DPDMM{T},x::AbstractVector{Int}) where T<:Real =
     DPDMMStats{T}(x,1)
 
 @inline function updatestats(m::DPDMMStats{T},x::AbstractVector{Int}) where T<:Real
-    DPDMMStats{T}(m.s+x,m.n+1)
+    DPDMMStats{T}(add!(m.s,x),m.n+1)
 end
 
 @inline function updatestats(m::DPDMMStats{T},X::AbstractMatrix{T}) where T<:Real
-    DPDMMStats{T}(m.s+vec(sum(X,dims=2)), m.n+size(X,2))
+    DPDMMStats{T}(add!(m.s,sumcol(X)), m.n+size(X,2))
 end
 
 @inline function downdatestats(m::DPDMMStats{T}, x::AbstractVector{Int}) where T<:Real
-    DPDMMStats{T}(m.s-x,m.n-1)
+    DPDMMStats{T}(substract!(m.s,x),m.n-1)
 end
 
 @inline function downdatestats(m::DPDMMStats{T},X::AbstractMatrix{Int}) where T<:Real
-    DPDMMStats{T}(m.s-vec(sum(X,dims=2)), m.n-size(X,2))
+    DPDMMStats{T}(substract!(m.s,sumcol(X)), m.n-size(X,2))
 end
 
-@inline _posterior(m::Dirichlet{V},T::DPDMMStats{V}) where V<:Real = m.alpha + T.s
+@inline _posterior(m::DirMul{V},T::DPDMMStats{V}) where V<:Real = m.alpha + T.s
 @inline _posterior(m::DPDMM,T::DPDMMStats) = _posterior(m.θprior,T)
-@inline posterior(m::DPDMM,T::DPDMMStats)  =  posterior(m.θprior,T)
-@inline posterior(m::Dirichlet{V},T::DPDMMStats{V}) where V<:Real = T.n!=0 ? Dirichlet{T}(_posterior(m,T)...) : m
+@inline posterior(m::DPDMM, T::DPDMMStats)  =  posterior(m.θprior,T)
+@inline posterior(m::DirMul{V}, T::DPDMMStats{V}) where V<:Real = T.n!=0 ? DirMul{V}(_posterior(m,T)) : m
