@@ -21,5 +21,13 @@ function direct_gibbs_parallel!(model, X, clusters, labels::SharedArray; observa
             end
         end
         clusters = DirectClusters(model,X,labels)
+	printStats(labels)
     end
 end
+
+function printStats(labels) 
+    unkeys = unique(labels)
+    for k in unkeys
+       println(k,"=>",count(zi->zi==k,labels))
+    end
+end  

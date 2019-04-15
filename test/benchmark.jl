@@ -1,7 +1,7 @@
 using Pkg; Pkg.activate("..")
 using Distributed, DPMM, Distributions, ArgParse
 import DPMM: init, DirectClusters, DirectCluster, direct_gibbs_parallel!,
-            direct_gibbs!, collapsed_gibbs! quasi_collapsed_gibbs!,
+            direct_gibbs!, collapsed_gibbs!, quasi_collapsed_gibbs!,
             quasi_direct_gibbs_parallel!, quasi_direct_gibbs!
 
 function parser(args)
@@ -50,7 +50,7 @@ mixture = RandMixture(𝒪[:K])
 data, mixture_labels = rand_with_label(mixture,𝒪[:N])
 
 ## Random Labels and Model
-(Dx,Nx),plabels,dpmm = init(data,𝒪[:alpha],𝒪[:Kinit])
+(Dx,Nx),plabels,dpmm = init(data,𝒪[:alpha],𝒪[:Kinit],DPGMM{Float64})
 
 ## Empty Cluster
 cluster0 = DirectCluster(dpmm)

@@ -1,5 +1,5 @@
 using LinearAlgebra
-import Distributions: rand, suffstats, length
+import Distributions: rand, suffstats, length, SufficientStats
 
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalInverseWishart{T}
@@ -15,7 +15,7 @@ end
 @inline DPGMM{T}(α::T,μ0::AbstractVector{T},Σ0::AbstractMatrix{T}) where T<:Real =
     DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0),α)
 
-struct DPGMMStats{T<:Real}
+struct DPGMMStats{T<:Real} <: SufficientStats
     nμ::Vector{T}
     S::Matrix{T}
     n::Int
@@ -118,3 +118,7 @@ end
 #     μn  = (λ * m.μ + x)/λn
 #     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankupdate(((λ*m.df)/(λ+1))*m.Σ.chol, sqrt(λ/λn) * (x-m.μ))))
 # end
+
+init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
+    size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)), (X*X')/size(X,2))
+

@@ -10,15 +10,15 @@ end
 
 @inline isempty(m::CollapsedCluster) = m.n==0
 
-@inline CollapsedCluster(m::DPGMM) = CollapsedCluster(m, suffstats(m))
+@inline CollapsedCluster(m::AbstractDPModel) = CollapsedCluster(m, suffstats(m))
 
-@inline CollapsedCluster(m::DPGMM,X::AbstractArray) =
+@inline CollapsedCluster(m::AbstractDPModel,X::AbstractArray) =
     CollapsedCluster(m, suffstats(m,X))
 
-@inline CollapsedCluster(m::DPGMM,s::DPGMMStats) =
+@inline CollapsedCluster(m::AbstractDPModel,s::SufficientStats) =
     CollapsedCluster(s.n, posterior_predictive(m,s), m.θprior)
 
-function CollapsedCluster(m::DPGMM,new::Val{true})
+function CollapsedCluster(m::AbstractDPModel,new::Val{true})
     c = CollapsedCluster(m, suffstats(m))
     return CollapsedCluster(floor(Int,m.α),c.predictive,c.prior)
 end
@@ -32,7 +32,7 @@ end
 @inline pdf(m::CollapsedCluster,x) = pdf(m.predictive,x)
 @inline (m::CollapsedCluster)(x)   = m.n*pdf(m.predictive,x)
 
-CollapsedClusters(model::DPGMM, X::AbstractMatrix, z::Array{Int}) =
+CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::Array{Int}) =
     Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
     
 #

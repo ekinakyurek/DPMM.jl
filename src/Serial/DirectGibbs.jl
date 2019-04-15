@@ -1,6 +1,6 @@
-function direct_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::Int=6, observables=nothing)
+function direct_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::Int=6, observables=nothing, modelType=DPGMM{Float64})
     #Initialization
-    (D,N),labels,model = init(X,α,ninit)
+    (D,N),labels,model = init(X,α,ninit,modelType)
     #Get Clusters
     clusters = DirectClusters(model,X,labels) # current clusters
     cluster0 = DirectCluster(model)  # empty cluster
@@ -23,11 +23,11 @@ function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster
     end
 end
 
-function mixture_πs(model::DPGMM{V}, clusters::Dict) where V<:Real
-    return ~Dirichlet([(c.n for c in values(clusters))...;model.α])
+function mixture_πs(model::AbstractDPModel{V}, clusters::Dict) where V<:Real
+    rand(DirichletCanon([(c.n for c in values(clusters))...;model.α]))
 end
 
-function ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector{V}) where V<:Real
+function ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     probs = Array{V,1}(undef,length(clusters)+1)
     for (j,c) in enumerate(values(clusters))
         @inbounds probs[j] = πs[j]*pdf(c,x)

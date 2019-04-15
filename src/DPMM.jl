@@ -9,7 +9,10 @@ const colorpalette  = RGBA.(palette("Set3", 12))
 
 include("Core/linearalgebra.jl")
 include("Core/niw.jl"); export NormalInverseWishart
+include("Core/dirichletmultinomial.jl"); export DirMul
+include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
 include("Data/data.jl"); export rand_with_label, RandMixture, GridMixture
+include("Data/nytimes.jl"); export readNYTimes
 include("Models/model.jl")
 include("Models/dpgmm.jl"); export DPGMM, DPGMMStats, suffstats, updatestats, downdatestats, posterior, posterior_predictive
 include("Models/dpdmm.jl"); export DPDMM, DPDMMStats
