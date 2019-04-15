@@ -1,6 +1,3 @@
-import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon
-import Base: length, convert
-
 struct DirMul{T<:Real} <:  ContinuousMultivariateDistribution
     alpha::Vector{T}
 end

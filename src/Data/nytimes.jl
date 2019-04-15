@@ -1,5 +1,3 @@
-using SparseArrays
-
 function readNYTimes(file, entry::Int=69679427)
     J=Array{Int}(undef,entry);
     Ir= Array{Int}(undef,entry);

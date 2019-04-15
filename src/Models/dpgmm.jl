@@ -1,6 +1,3 @@
-using LinearAlgebra
-import Distributions: rand, suffstats, length, SufficientStats
-
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalInverseWishart{T}
     α::T
@@ -121,4 +118,3 @@ end
 
 init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
     size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)), (X*X')/size(X,2))
-

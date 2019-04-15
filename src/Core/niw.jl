@@ -1,6 +1,3 @@
-using LinearAlgebra, PDMats
-import Distributions: rand, pdf, params
-
 struct NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistribution
     μ::Vector{T}
     λ::T  # This scales precision (inverse covariance)
@@ -35,50 +32,61 @@ NormalInverseWishart{T}(mean::AbstractArray{T}) where T<:Real =
 NormalInverseWishart{T}(mean::AbstractArray{T}, cov::AbstractMatrix{T}) where T<:Real =
     NormalInverseWishart(mean,T(1),cov,T(length(mean))+3)
 
+function rand(niw::NormalInverseWishart{T,<:Any}) where T
+    J   = PDMat(randWishart(inv(niw.Ψ), niw.ν))
+    μ   = randNormal(niw.μ, PDMat(J.chol * niw.λ))
+    return MvNormalFast(μ, J)
+end
+
+function randWishart(S::AbstractPDMat, df::Real)
+    A = _wishart_genA(dim(S), df)
+    unwhiten!(S, A)
+    A .= A * A'
+end
+
+randInvWishart(Ψ::AbstractPDMat, df::Real) = inv(PDMat(randWishart(inv(Ψ),df)))
+
+
 params(niw::NormalInverseWishart) = (niw.μ, niw.Ψ, niw.λ, niw.ν)
-pdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real = exp(logpdf(niw, x, Σ))
 
-function logpdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real
-    if !insupport(NormalInverseWishart, x, Σ)
-        return -Inf
-    else
-        p = size(x, 1)
-        ν = niw.ν
-        λ = niw.λ
-        μ = niw.μ
-        Ψ = niw.Ψ
-        hnu = 0.5 * ν
-        hp  = 0.5 * p
 
-        # Normalization
-        logp::T = hnu * logdet(Ψ)
-        logp -= hnu * p * log(2.)
-        logp -= logmvgamma(p, hnu)
-        logp -= hp * (log(2.0*pi) - log(λ))
-
-        # Inverse-Wishart
-        logp -= (hnu + hp + 1.) * logdet(Σ)
-        logp -= 0.5 * tr(Σ \ Matrix(Ψ))
-
-        # Normal
-        z = niw.zeromean ? x : x - μ
-        logp -= 0.5 * λ * invquad(PDMat(Σ), z)
-
-        return logp
-
-    end
-end
-
-function rand(niw::NormalInverseWishart)
-    Σ   = rand(InverseWishart(niw.ν, niw.Ψ))
-    μ   = rand(MvNormal(niw.μ, Σ ./ niw.λ))
-    return MvNormal(μ, Σ)
-end
-
-function insupport(::Type{NormalInverseWishart}, x::Vector{T}, Σ::Matrix{T}) where T<:Real
-    return (all(isfinite, x) &&
-           size(Σ, 1) == size(Σ, 2) &&
-           isApproxSymmmetric(Σ) &&
-           size(Σ, 1) == length(x) &&
-           hasCholesky(Σ))
-end
+# pdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real = exp(logpdf(niw, x, Σ))
+#
+# function insupport(::Type{NormalInverseWishart}, x::Vector{T}, Σ::Matrix{T}) where T<:Real
+#     return (all(isfinite, x) &&
+#            size(Σ, 1) == size(Σ, 2) &&
+#            isApproxSymmmetric(Σ) &&
+#            size(Σ, 1) == length(x) &&
+#            hasCholesky(Σ)
+# end
+#
+# function logpdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real
+#     if !insupport(NormalInverseWishart, x, Σ)
+#         return -Inf
+#     else
+#         p = size(x, 1)
+#         ν = niw.ν
+#         λ = niw.λ
+#         μ = niw.μ
+#         Ψ = niw.Ψ
+#         hnu = 0.5 * ν
+#         hp  = 0.5 * p
+#
+#         # Normalization
+#         logp::T = hnu * logdet(Ψ)
+#         logp -= hnu * p * log(2.)
+#         logp -= logmvgamma(p, hnu)
+#         logp -= hp * (log(2.0*pi) - log(λ))
+#
+#         # Inverse-Wishart
+#         logp -= (hnu + hp + 1.) * logdet(Σ)
+#         logp -= 0.5 * tr(Σ \ Matrix(Ψ))
+#
+#         # Normal
+#         z = niw.zeromean ? x : x - μ
+#         logp -= 0.5 * λ * invquad(PDMat(Σ), z)
+#
+#         return logp
+#
+#     end
+# end

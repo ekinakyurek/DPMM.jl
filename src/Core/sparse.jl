@@ -1,8 +1,3 @@
-using SparseArrays, Distributions
-import Base: size, +, -, *, getindex, sum, length
-import SparseArrays: AbstractSparseMatrix, AbstractSparseVector, nonzeroinds, nonzeros
-import Distributions: _logpdf, lgamma, xlogy
-
 struct DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
     n::Int              # Length of the sparse vector
     nzind::Vector{Ti}   # Indices of stored values
@@ -85,7 +80,7 @@ function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
     n = sum(x)
     S = eltype(p)
     R = promote_type(Tv, S)
-    s = R(lgamma(1.6n + 1)) 
+    s = R(lgamma(1.6n + 1))
     for (i,index) in enumerate(x.nzind)
         @inbounds xi = x.nzval[i]
         @inbounds p_i = p[index]

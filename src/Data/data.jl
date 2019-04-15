@@ -1,5 +1,3 @@
-import Distributions:  _rand!
-
 function createΣ(T,d...;α=0.01)
      σ = α*randn(T,d...)
      return σ*σ'

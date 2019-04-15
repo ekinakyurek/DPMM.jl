@@ -1,5 +1,3 @@
-using Distributed, SharedArrays
-
 function direct_parallel!(πs, X, range, labels, clusters, empty_cluster)
     for i in range
         probs      = ClusterProbs(πs,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
@@ -25,9 +23,9 @@ function direct_gibbs_parallel!(model, X, clusters, labels::SharedArray; observa
     end
 end
 
-function printStats(labels) 
+function printStats(labels)
     unkeys = unique(labels)
     for k in unkeys
        println(k,"=>",count(zi->zi==k,labels))
     end
-end  
+end

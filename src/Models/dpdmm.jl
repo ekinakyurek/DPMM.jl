@@ -1,6 +1,3 @@
-using LinearAlgebra
-import Distributions: rand, suffstats, length, SufficientStats
-
 struct DPDMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::DirMul{T}
     α::T

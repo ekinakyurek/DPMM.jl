@@ -1,13 +1,24 @@
 module DPMM
+using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats #Makie
 
-using Distributions, ColorBrewer, Colors, SharedArrays #Makie
-import Distributions: NoArgCheck
-import Base: ~
+import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~
 @inline ~(x::Distribution) = rand(x)
+
 const colorpalette  = RGBA.(palette("Set3", 12))
 
+import SparseArrays: AbstractSparseMatrix, AbstractSparseVector, nonzeroinds, nonzeros
+
+
+import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon,
+                      _logpdf!, rand, pdf, params, _wishart_genA, var,
+                      mean, cov, params, invcov, logdetcov, sqmahal, sqmahal!,
+                      partype, unwhiten_winv!,log2π, mvnormal_c0, _logpdf, lgamma,
+                      xlogy, NoArgCheck, suffstats, SufficientStats
+
+import PDMats: unwhiten!, add!, quad, quad!
 
 include("Core/linearalgebra.jl")
+include("Core/mvnormal.jl"); export MvNormalFast
 include("Core/niw.jl"); export NormalInverseWishart
 include("Core/dirichletmultinomial.jl"); export DirMul
 include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
