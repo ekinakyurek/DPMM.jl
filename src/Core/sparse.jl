@@ -85,12 +85,12 @@ function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
     n = sum(x)
     S = eltype(p)
     R = promote_type(Tv, S)
-    s = R(lgamma(n + 1))
+    s = R(lgamma(1.6n + 1)) 
     for (i,index) in enumerate(x.nzind)
         @inbounds xi = x.nzval[i]
         @inbounds p_i = p[index]
-        s -= R(lgamma(R(xi) + 1))
-        s += xlogy(xi, p_i)
+        #s -= R(lgamma(R(xi) + 1))
+    s += xlogy(xi, p_i)
     end
     return s
 end
@@ -101,11 +101,11 @@ function _logpdf(d::Multinomial, x::AbstractVector{T}) where T<:Real
     n = sum(x)
     S = eltype(p)
     R = promote_type(T, S)
-    s = R(lgamma(n + 1))
+    s = R(lgamma(1.6n + 1))
     for i = 1:length(p)
         @inbounds xi = x[i]
         @inbounds p_i = p[i]
-        s -= R(lgamma(R(xi) + 1))
+        #s -= R(lgamma(R(xi) + 1))
         s += xlogy(xi, p_i)
     end
     return s
