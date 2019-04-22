@@ -1,3 +1,4 @@
+const logpi = log(π)
 struct NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistribution
     μ::Vector{T}
     λ::T  # This scales precision (inverse covariance)
@@ -7,6 +8,8 @@ struct NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDis
         new{T,typeof(Ψ)}(μ, λ, Ψ, ν)
     end
 end
+
+@inline length(d::NormalInverseWishart) = length(d.μ)
 
 function NormalInverseWishart(μ::Vector{U}, λ::Real,
                               Ψ::AbstractPDMat{S}, ν::Real) where {S<:Real, U<:Real}
@@ -43,11 +46,28 @@ function randWishart(S::AbstractPDMat, df::Real)
     unwhiten!(S, A)
     A .= A * A'
 end
-
 randInvWishart(Ψ::AbstractPDMat, df::Real) = inv(PDMat(randWishart(inv(Ψ),df)))
-
-
 params(niw::NormalInverseWishart) = (niw.μ, niw.Ψ, niw.λ, niw.ν)
+
+function _logpdf(d::GenericMvTDist, x::AbstractMatrix{T}) where T<:Real
+    r = similar(x,size(x,2))
+    return sum(_logpdf!(r,d,x))
+end
+
+function mv_lgamma(s::Real, x::Real, D::Int)
+    for d=1:D
+        s += lgamma(x+(1-d)/2)
+    end
+    return s
+end
+
+function lmllh(prior::NormalInverseWishart{T}, posterior::NormalInverseWishart{T},  n::Int) where T
+    D = length(prior)
+    s = D*(D-1)/4*logpi
+    return -n*D/2*logpi + mv_lgamma(s, posterior.ν/2, D) - mv_lgamma(s, prior.ν/2, D) +
+            prior.ν/2*logdet(prior.Ψ) - posterior.ν/2*logdet(posterior.Ψ) +
+            D/2*(log(prior.λ)-log(posterior.λ))
+end
 
 
 # pdf(niw::NormalInverseWishart, x::Vector{T}, Σ::Matrix{T}) where T<:Real = exp(logpdf(niw, x, Σ))

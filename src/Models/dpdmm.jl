@@ -7,6 +7,8 @@ end
 
 @inline DPDMM{T}(α::T,alphas::AbstractVector{T}) where T<:Real = DPDMM{T,length(alphas)}(DirMul{T}(alphas),α)
 
+@inline stattype(::DPDMM{T}) where T = DPDMMStats{T}
+
 struct DPDMMStats{T<:Real} <: SufficientStats
     s::Vector{Int}
     n::Int
@@ -23,6 +25,14 @@ end
 
 @inline function updatestats(m::DPDMMStats{T},x::AbstractVector{Int}) where T<:Real
     DPDMMStats{T}(add!(m.s,x),m.n+1)
+end
+
+@inline function +(s1::DPDMMStats{T},s2::DPDMMStats{T}) where T<:Real
+    DPDMMStats{T}(s1.s+s2.s,s1.n+s2.n)
+end
+
+@inline function -(s1::DPDMMStats{T},s2::DPDMMStats{T}) where T<:Real
+    DPDMMStats{T}(s1.s-s2.s,s1.n-s2.n)
 end
 
 @inline function updatestats(m::DPDMMStats{T},X::AbstractMatrix{T}) where T<:Real

@@ -12,6 +12,8 @@ end
 @inline DPGMM{T}(α::T,μ0::AbstractVector{T},Σ0::AbstractMatrix{T}) where T<:Real =
     DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0),α)
 
+@inline stattype(::DPGMM{T}) where T = DPGMMStats{T}
+
 struct DPGMMStats{T<:Real} <: SufficientStats
     nμ::Vector{T}
     S::Matrix{T}
@@ -19,13 +21,21 @@ struct DPGMMStats{T<:Real} <: SufficientStats
 end
 
 @inline suffstats(m::DPGMM{T,D}) where {T<:Real,D} =
-    DPGMMStats(zeros(T,D),zeros(T,D,D),0)
+    DPGMMStats{T}(zeros(T,D),zeros(T,D,D),0)
 
 @inline suffstats(m::DPGMM{T},X::AbstractMatrix{T}) where T<:Real =
-    DPGMMStats(vec(sum(X,dims=2)),X*X',size(X,2))
+    DPGMMStats{T}(vec(sum(X,dims=2)),X*X',size(X,2))
 
 @inline suffstats(m::DPGMM{T},x::AbstractVector{T}) where T<:Real =
-    DPGMMStats(x,x*x',1)
+    DPGMMStats{T}(x,x*x',1)
+
+@inline function +(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
+    DPGMMStats{T}(s1.nμ .+ s2.nμ,s1.S .+ s2.S,s1.n+s2.n)
+end
+
+@inline function -(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
+    DPGMMStats{T}(s1.nμ .- s2.nμ,s1.S .- s2.S,s1.n-s2.n)
+end
 
 @inline function updatestats(m::DPGMMStats{T},x::AbstractVector{T}) where T<:Real
     m.nμ .+= x
@@ -52,10 +62,10 @@ end
 end
 
 function _posterior(m::NormalInverseWishart{V},T::DPGMMStats{V}) where V<:Real
-    λn   = m.λ + T.n
-    νn   = m.ν + T.n
-    μn   = (m.λ * m.μ + T.nμ)/λn
-    Ψn   = m.Ψ + T.S + m.λ * (m.μ * m.μ') - λn * (μn * μn')
+    λn   = m.λ + V(T.n)
+    νn   = m.ν + V(T.n)
+    μn   = (m.λ * m.μ .+ T.nμ)/λn
+    Ψn   = m.Ψ + T.S .+ m.λ * (m.μ * m.μ') - λn * (μn * μn')
     return (μn,λn,Ψn,νn)
 end
 
@@ -117,4 +127,4 @@ end
 # end
 
 init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
-    size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)), (X*X')/size(X,2))
+    size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)),(X*X')/size(X,2))

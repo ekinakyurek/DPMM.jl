@@ -18,10 +18,8 @@ end
 @inline CollapsedCluster(m::AbstractDPModel,s::SufficientStats) =
     CollapsedCluster(s.n, posterior_predictive(m,s), m.θprior)
 
-function CollapsedCluster(m::AbstractDPModel,new::Val{true})
-    c = CollapsedCluster(m, suffstats(m))
-    return CollapsedCluster(floor(Int,m.α),c.predictive,c.prior)
-end
+@inline CollapsedCluster(m::AbstractDPModel,new::Val{true}) =
+    CollapsedCluster(floor(Int,m.α),posterior_predictive(m),m.θprior)
 
 @inline -(c::CollapsedCluster{V,P},x::AbstractVector) where {V<:Distribution,P<:Distribution} =
     CollapsedCluster{V,P}(c.n-1, downdate_predictive(c.prior,c.predictive,x,c.n), c.prior)
@@ -30,11 +28,11 @@ end
     CollapsedCluster{V,P}(c.n+1, update_predictive(c.prior,c.predictive,x,c.n), c.prior)
 
 @inline pdf(m::CollapsedCluster,x) = pdf(m.predictive,x)
-@inline (m::CollapsedCluster)(x)   = m.n*pdf(m.predictive,x)
+@inline (m::CollapsedCluster)(x)   = m.n * pdf(m.predictive,x)
 
 CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::Array{Int}) =
     Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
-    
+
 #
 # function Base.hash(obj::CollapsedCluster, h::UInt)
 #     return hash((obj.n, obj.predictive), h)

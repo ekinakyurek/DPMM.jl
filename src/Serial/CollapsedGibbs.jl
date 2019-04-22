@@ -3,7 +3,7 @@ function collapsed_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::In
     (D,N),labels,model = init(X,α,ninit,modelType)
     #Get Clusters
     clusters = CollapsedClusters(model,X,labels) # current clusters
-    cluster0 = CollapsedCluster(model)  # empty cluster
+    cluster0 = CollapsedCluster(model,Val(true))  # empty cluster
     #clusters[0] = CollapsedCluster(model,Val(true))
     collapsed_gibbs!(model, X, labels, clusters, cluster0; T=T, observables=observables)
     return labels
@@ -24,17 +24,16 @@ function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_clus
 end
 
 
-function CRPprobs(model::DPGMM{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
-    probs = Array{V,1}(undef,length(clusters)+1)
+function CRPprobs(model::AbstractDPModel{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
+    p = Array{V,1}(undef,length(clusters)+1)
     for (j,c) in enumerate(values(clusters))
-        @inbounds probs[j] = c(x)
+        @inbounds p[j] = c(x)
     end
-    #probs = map(c->c(x)::V,values(clusters))
-    probs[end] = model.α*pdf(cluster0,x)
-    return probs/sum(probs)
+    p[end] = cluster0(x)
+    return p/sum(p)
 end
 
-function place_x!(model::DPGMM,clusters::Dict,knew::Int,xi::AbstractVector)
+function place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)
     cks = collect(keys(clusters))
     if knew > length(clusters)
         ck = maximum(cks)+1

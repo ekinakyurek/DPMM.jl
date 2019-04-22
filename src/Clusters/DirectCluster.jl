@@ -16,13 +16,11 @@ end
 @inline DirectCluster(m::AbstractDPModel, s::SufficientStats) =
     DirectCluster(s.n, rand(posterior(m,s)), m.θprior)
 
-function DirectCluster(m::AbstractDPModel, new::Val{true})
-    c = DirectCluster(m, suffstats(m))
-    return DirectCluster(floor(Int,m.α),c.sampled,c.prior)
-end
+@inline DirectCluster(m::AbstractDPModel, new::Val{true}) =
+    DirectCluster(floor(Int,m.α),rand(m.θprior),m.θprior)
 
 @inline pdf(m::DirectCluster,x) = pdf(m.sampled,x)
-@inline (m::DirectCluster)(x)   = m.n*pdf(m.sampled,x)
+@inline (m::DirectCluster)(x)  = m.n*pdf(m.sampled,x)
 
 DirectClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,DirectCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))

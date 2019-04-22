@@ -24,7 +24,7 @@ end
 MvNormalFast(J::Matrix{<:Real}) = MvNormalFast(PDMat(J))
 
 @inline length(d::MvNormalFast) = length(d.μ)
-@inline mean(d::MvNormalFast) = d.μ
+@inline mean(d::MvNormalFast)   = d.μ
 @inline params(d::MvNormalFast) = (d.μ, d.J)
 @inline partype(d::MvNormalFast{T}) where {T<:Real} = T
 
@@ -33,26 +33,46 @@ cov(d::MvNormalFast) = Matrix(inv(d.J))
 
 invcov(d::MvNormalFast) = Matrix(d.J)
 logdetcov(d::MvNormalFast) = -logdet(d.J)
-@inline mvnormal_c0(d::MvNormalFast) = d.c0
+mvnormal_c0(d::MvNormalFast) = d.c0
 
 sqmahal(d::MvNormalFast, x::AbstractVector) = quad(d.J, broadcast(-, x, d.μ))
 sqmahal!(r::AbstractVector, d::MvNormalFast, x::AbstractMatrix) = quad!(r, d.J, broadcast(-, x, d.μ))
 
+function pdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T
+    D = length(x)
+    μ = d.μ
+    J = d.J.mat
+    y = Vector{T}(undef,D)
+    s = zero(T)
+
+    @fastmath @simd for i=1:D
+        @inbounds y[i] = x[i]-μ[i]
+    end
+
+    @fastmath @simd for i=1:D
+        for j=1:D
+            @inbounds s += y[i] * y[j] * J[i, j]
+        end
+    end
+
+    return @fastmath(exp(d.c0 - s/T(2)))
+end
 ####
 ##### Helper Functions
 ####
 
-mvnormal_c0(μ::AbstractVector, J::AbstractPDMat) = -(length(μ) * Float64(log2π) - logdet(J))/2
+mvnormal_c0(μ::AbstractVector, J::AbstractPDMat) =
+    -(length(μ) * Float64(log2π) - logdet(J))/2
 
 ## Sample normal with mean and precision matrix
 
-@inline function randNormal(μ::AbstractVector{T}, J::AbstractPDMat{T}) where T
+randNormal(μ::AbstractVector{T}, J::AbstractPDMat{T}) where T =
     randNormal!(μ, J, similar(μ))
-end
+
 
 function randNormal!(μ::AbstractVector{T}, J::AbstractPDMat{T}, x::AbstractVector{T}) where T
     for i in eachindex(x)
         @inbounds x[i] = randn()
     end
-    add!(unwhiten_winv!(J, x), μ)
+    return add!(unwhiten_winv!(J, x), μ)
 end

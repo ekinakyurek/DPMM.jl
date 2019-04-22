@@ -3,7 +3,7 @@ function quasi_collapsed_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, nin
     (D,N),labels,model = init(X,α,ninit,modelType)
     #Get Clusters
     clusters = CollapsedClusters(model,X,labels) # current clusters
-    cluster0 = CollapsedCluster(model)  # empty cluster
+    cluster0 = CollapsedCluster(model, Val(true))  # empty cluster
     #clusters[0] = CollapsedCluster(model,Val(true))
     quasi_collapsed_gibbs!(model, X, labels, clusters, cluster0; T=T, observables=observables)
     return labels
@@ -13,8 +13,7 @@ function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empt
     for t in 1:T
         record!(observables,labels,t)
         @inbounds for i=1:size(X,2)
-            x, z = X[:,i], labels[i]
-            probs     = CRPprobs(model,clusters,empty_cluster,x) # chinese restraunt process probabilities
+            probs     = CRPprobs(model,clusters,empty_cluster, X[:,i]) # chinese restraunt process probabilities
             znew      =~ Categorical(probs,NoArgCheck()) # new label
             labels[i] = label_x(clusters,znew)
         end
