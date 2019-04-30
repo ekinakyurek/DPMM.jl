@@ -12,7 +12,7 @@ end
 
 function split_merge_gibbs!(model, X::AbstractMatrix, labels, clusters; T=10, observables=nothing)
     for t in 1:T
-        record!(observables,first.(labels),t)
+        #record!(observables,first.(labels),t)
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
