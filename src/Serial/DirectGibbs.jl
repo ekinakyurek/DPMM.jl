@@ -12,10 +12,10 @@ end
 function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
     for t in 1:T
         record!(observables,labels,t)
+        πs        = mixture_πs(model,clusters) # unnormalized weights
         @inbounds for i=1:size(X,2)
-            πs        = mixture_πs(model,clusters) # unnormalized weights
-            probs     = ClusterProbs(πs,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
-            znew      =~ Categorical(probs,NoArgCheck()) # new label
+            probs     = ClusterProbs(πs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
+            znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = label_x(clusters,znew)
         end
         clusters = DirectClusters(model,X,labels) # TODO handle empty clusters

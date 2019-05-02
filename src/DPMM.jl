@@ -38,7 +38,7 @@ include("Serial/CollapsedGibbs.jl"); export collapsed_gibbs
 include("Serial/QuasiCollapsedGibbs.jl");export quasi_collapsed_gibbs
 include("Serial/DirectGibbs.jl"); export direct_gibbs
 include("Serial/QuasiDirectGibbs.jl"); export quasi_direct_gibbs
-include("Serial/SplitMerge.jl") export split_merge_gibbs, split_merge_gibbs!, split_merge_labels
+include("Serial/SplitMerge.jl"); export split_merge_gibbs, split_merge_gibbs!, split_merge_labels
 include("Parallel/DirectGibbsParallel.jl"); export direct_parallel!, direct_gibbs_parallel!
 include("Parallel/QuasiDirectParallel.jl"); export quasi_direct_parallel!,  quasi_direct_gibbs_parallel!
 include("Parallel/QuasiCollapsedParallel.jl");export quasi_collapsed_parallel!,  quasi_collapsed_gibbs_parallel!

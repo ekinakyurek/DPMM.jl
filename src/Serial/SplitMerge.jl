@@ -16,12 +16,14 @@ function split_merge_gibbs!(model, X::AbstractMatrix, labels, clusters; T=10, ob
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
+
         @inbounds for i=1:size(X,2) # make parallel
             x = view(X,:,i)
             probs = RestrictedClusterProbs(πs,clusters,x)
             z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
             labels[i] = (z,SampleSubCluster(sπs[z],clusters[z],x))
         end
+
         update_clusters!(model,X,clusters,labels)
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
         materialize_splits!(model, X, labels, clusters, will_split)

@@ -1,7 +1,7 @@
 function direct_parallel!(πs, X, range, labels, clusters, empty_cluster)
     for i in range
-        probs      = ClusterProbs(πs,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
-        znew       =~ Categorical(probs,NoArgCheck()) # new label
+        probs      = ClusterProbs(πs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
+        znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
         labels[i]  = label_x(clusters,znew)
     end
 end
@@ -19,7 +19,6 @@ function direct_gibbs_parallel!(model, X, clusters, labels::SharedArray; observa
             end
         end
         clusters = DirectClusters(model,X,labels)
-	printStats(labels)
     end
 end
 

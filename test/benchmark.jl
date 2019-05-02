@@ -10,7 +10,7 @@ function parser(args)
      "--ncpu"
          help = "number of worker nodes"
          arg_type = Int
-         default = 3
+         default = 2
      "--alpha"
          help = "DPMM model parameter"
          arg_type = Float64
@@ -64,10 +64,13 @@ end
 
 # Send data to worker nodes
 @everywhere begin
-    const α     = $𝒪[:alpha]
-    const X     = $data
     const D     = $𝒪[:D]
     const N     = $𝒪[:N]
+    const α     = $𝒪[:alpha]
+    const X     = $data
+end
+
+@everywhere begin
     const model = $dpmm
     const empty_cluster = $cluster0
 end
@@ -76,74 +79,80 @@ directclusters = DirectClusters(dpmm,data,plabels) # current clusters
 collapsedclusters = CollapsedClusters(dpmm,data,plabels)
 empty_collapsed_cluster = CollapsedCluster(dpmm,Val(true))
 
-#Run parallel direct gibbs sampler
-#Share labels across workers
+
+# # Comparison
+
+# ## Direct Sampler
+# ### Cold run
+plabels_copy  = copy(plabels)
+direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=10)
+# ### Benchmark
+plabels_copy  = copy(plabels)
+dgs_time = @elapsed direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
+
+# # ## Quasi-Direct Sampler
+# # ### Cold run
+# plabels_copy  = copy(plabels)
+# quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=10)
+# # ### Benchmark
+# plabels_copy  = copy(plabels)
+# qdgtime = @elapsed quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
+
+
+# # #Run parallel direct gibbs sampler
+# # #Share labels across workers
+# shared_labels = SharedArray(plabels)
+
+# # # Cold run: Let Julia to compile all functions
+# quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=10)
+# # # Benchmark
+# shared_labels = SharedArray(plabels)
+# dgptime = @elapsed quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=𝒪[:T])
+
+
+# #Run parallel direct gibbs sampler
+# #Share labels across workers
 shared_labels = SharedArray(plabels)
-
-# Cold run: Let Julia to compile all functions
-quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=2)
-# Benchmark
+# # Cold run: Let Julia to compile all functions
+direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=10)
+# # Benchmark
 shared_labels = SharedArray(plabels)
-dgptime = @elapsed quasi_direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=𝒪[:T])
+dgp_time = @elapsed direct_gibbs_parallel!(model, X, directclusters, shared_labels, T=𝒪[:T])
 
-# Comparison
 
-## Direct Sampler
-### Cold run
-plabels_copy  = copy(plabels)
-direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=2)
+# ## Collapsed Sampler
+# ### Cold run
+# plabels_copy  = copy(plabels)
+# collapsedclusters = CollapsedClusters(dpmm,data,plabels)
+# quasi_collapsed_gibbs!(model,X,plabels_copy,collapsedclusters,empty_collapsed_cluster,T=10)
 ### Benchmark
-plabels_copy  = copy(plabels)
-dgtime = @elapsed direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
-
-
-## Quasi-Direct Sampler
-### Cold run
-plabels_copy  = copy(plabels)
-quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=2)
-### Benchmark
-plabels_copy  = copy(plabels)
-dgtime = @elapsed quasi_direct_gibbs!(model, X, plabels_copy, directclusters,empty_cluster,T=𝒪[:T])
-
-## Collapsed Sampler
-### Cold run
-plabels_copy  = copy(plabels)
-collapsedclusters = CollapsedClusters(dpmm,data,plabels)
-collapsed_gibbs!(model,X,plabels_copy,collapsedclusters,empty_collapsed_cluster,T=2)
-### Benchmark
-plabels_copy  = copy(plabels)
-collapsedclusters = CollapsedClusters(dpmm,data,plabels)
-cgtime = @elapsed collapsed_gibbs!(model,X,plabels_copy,collapsedclusters,empty_collapsed_cluster,T=𝒪[:T])
+# plabels_copy  = copy(plabels)
+#collapsedclusters = CollapsedClusters(dpmm,data,plabels)
+# quasi_collapsed_gibbs!(model,X,plabels_copy,collapsedclusters,empty_collapsed_cluster,T=𝒪[:T])
 
 
 ## SplitMerge Sampler
 ### Cold run
 sp_labels = SharedArray(split_merge_labels(plabels))
 sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
-splitmerge_parallel_gibbs!(model,X,sp_labels,sp_clusters,T=2)
-### Benchmark
-plabels_copy  = SharedArray(split_merge_labels(plabels))
-sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
-spp_time = @elapsed splitmerge_parallel_gibbs!(model,X,sp_labels,sp_clusters,T=𝒪[:T])
-
-
-## SplitMerge Sampler
-### Cold run
-sp_labels = SharedArray(split_merge_labels(plabels))
-sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
-DPMM.split_merge_gibbs!(model,X,sp_labels,sp_clusters,T=2)
+DPMM.split_merge_gibbs!(model,X,sp_labels,sp_clusters,T=10)
 ### Benchmark
 plabels_copy  = SharedArray(split_merge_labels(plabels))
 sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
 sps_time = @elapsed split_merge_gibbs!(model,X,sp_labels,sp_clusters,T=𝒪[:T])
 
 
+## SplitMerge Parallel Sampler
+### Cold run
+sp_labels = SharedArray(split_merge_labels(plabels))
+sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
+splitmerge_parallel_gibbs!(model,X,sp_labels, sp_clusters,T=10)
+### Benchmark
+sp_labels  = SharedArray(split_merge_labels(plabels))
+sp_clusters = SplitMergeClusters(dpmm,data,sp_labels)
+spp_time = @elapsed splitmerge_parallel_gibbs!(model,X,sp_labels,sp_clusters,T=𝒪[:T])
 
 
 
-println("$(𝒪[:N])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t$(𝒪[:alpha])\t$(𝒪[:D])\t
-$(dgptime/𝒪[:T])\t
-$(dgtime/𝒪[:T])\t
-$(cgtime/𝒪[:T])\t
-$(spp_time/𝒪[:T])\t
-$(sps_time/𝒪[:T])\t")
+
+println("$(𝒪[:N])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t$(𝒪[:alpha])\t$(𝒪[:D])\t$(dgs_time/𝒪[:T])\t$(dgp_time/𝒪[:T])\t$(sps_time/𝒪[:T])\t$(spp_time/𝒪[:T])\t")
