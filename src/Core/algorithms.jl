@@ -1,7 +1,7 @@
 abstract type DPMMAlgorithm{P} end
 
-_default_model(T::Type{<:AbstractFloat}) = DPGMM
-_default_model(::Type{<:Integer})        = DPDMM
+_default_model(::Type{<:AbstractFloat}) = DPGMM
+_default_model(::Type{<:Integer})       = DPDMM
 
 function setup_workers(ncpu)
     if nworkers() != ncpu

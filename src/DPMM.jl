@@ -26,7 +26,7 @@ dir(path...) = joinpath(dirname(@__DIR__),path...)
 include("Core/linearalgebra.jl")
 include("Core/mvnormal.jl"); export MvNormalFast
 include("Core/niw.jl"); export NormalInverseWishart
-include("Core/dirichletmultinomial.jl"); export DirMul
+include("Core/dirichletmultinomial.jl"); export DirichletFast
 include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
 include("Core/algorithms.jl"); export run!, setup_workers, initialize_clusters
 include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture
