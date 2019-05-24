@@ -69,5 +69,5 @@ end
 @inline get_right_inds(indices::Vector{Int}, labels::AbstractVector{Tuple{Int,Bool}}) =
     filter(i->!labels[i][2],indices)
 
-split_merge_labels(labels::AbstractVector{Int}) =
+split_merge_labels(labels::AbstractVector{<:Integer}) =
     map(l->(l,rand()>0.5),labels)

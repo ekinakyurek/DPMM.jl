@@ -35,6 +35,12 @@ NormalInverseWishart{T}(mean::AbstractArray{T}) where T<:Real =
 NormalInverseWishart{T}(mean::AbstractArray{T}, cov::AbstractMatrix{T}) where T<:Real =
     NormalInverseWishart(mean,T(1),cov,T(length(mean))+3)
 
+# function rand(niw::NormalInverseWishart{T,<:Any}) where T
+#     Σ   = rand(InverseWishart(niw.ν, niw.Ψ))
+#     μ   = rand(MvNormal(niw.μ, Σ ./ niw.λ))
+#     return MvNormal(μ, Σ)
+# end
+
 function rand(niw::NormalInverseWishart{T,<:Any}) where T
     J   = PDMat(randWishart(inv(niw.Ψ), niw.ν))
     μ   = randNormal(niw.μ, PDMat(J.chol * niw.λ))

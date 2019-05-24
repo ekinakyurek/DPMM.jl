@@ -28,9 +28,9 @@ end
     CollapsedCluster{V,P}(c.n+1, update_predictive(c.prior,c.predictive,x,c.n), c.prior)
 
 @inline pdf(m::CollapsedCluster,x) = pdf(m.predictive,x)
-@inline (m::CollapsedCluster)(x)   = m.n * pdf(m.predictive,x)
+@inline (m::CollapsedCluster)(x) = m.n * pdf(m.predictive,x)
 
-CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::Array{Int}) =
+CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
 
 #

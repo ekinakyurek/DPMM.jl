@@ -3,14 +3,18 @@ struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     α::T
 end
 
-@inline DPGMM{T,D}(α::T) where {T<:Real,D} =
-    DPGMM{T,dim}(NormalInverseWishart{T}(D),α)
+function DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real
+    DPGMM{T}(T(α), vec(mean(X,dims=2)),(X*X')/size(X,2))
+end
 
-@inline DPGMM{T}(α::T,μ0::AbstractVector{T}) where T<:Real =
-    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0),α)
+@inline DPGMM{T,D}(α::Real) where {T<:Real,D} =
+    DPGMM{T,dim}(NormalInverseWishart{T}(D),T(α))
 
-@inline DPGMM{T}(α::T,μ0::AbstractVector{T},Σ0::AbstractMatrix{T}) where T<:Real =
-    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0),α)
+@inline DPGMM{T}(α::Real, μ0::AbstractVector{T}) where T<:Real =
+    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0),T(α))
+
+@inline DPGMM{T}(α::Real, μ0::AbstractVector{T}, Σ0::AbstractMatrix{T}) where T<:Real =
+    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0), T(α))
 
 @inline stattype(::DPGMM{T}) where T = DPGMMStats{T}
 
@@ -106,25 +110,6 @@ end
     μn  = (λ * m.μ + x)/λn
     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankupdate(((λ*m.df)/(λ+1))*m.Σ.chol, sqrt(λ/λn) * (x-m.μ))))
 end
-
-# We sart λ0=1,ν0=D+3. So we in this setting df=ν-D+1 => λ=df-1
-# If you change ν0-λ0 in niw initialization,  below code does't work correctly.
 #
-# @inline function downdate_predictive(m::MvTDist,x::AbstractVector{V}) where {V<:Real}
-#     λ   = m.df-3
-#     dfn = m.df-1
-#     λn  = λ - 1
-#     μn  = (λ * m.μ - x)/λn
-#     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankdowndate(((λ*m.df)/(λ+1))*m.Σ.chol,sqrt(λ/λn) * (x-m.μ))))
-# end
-#
-# @inline function update_predictive(m::MvTDist,x::AbstractVector{V}) where {V<:Real}
-#     λ   = m.df-3 # We sart λ0=1,ν0=D+3.So df=ν-D+1 => λ=df
-#     dfn = m.df+1
-#     λn  = λ + 1
-#     μn  = (λ * m.μ + x)/λn
-#     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankupdate(((λ*m.df)/(λ+1))*m.Σ.chol, sqrt(λ/λn) * (x-m.μ))))
-# end
-
-init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
-    size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)),(X*X')/size(X,2))
+# init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
+#     size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)),(X*X')/size(X,2))

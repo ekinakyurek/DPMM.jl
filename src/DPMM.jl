@@ -21,27 +21,45 @@ import PDMats: unwhiten!, add!, quad, quad!
 using TimerOutputs
 const to = TimerOutput()
 
+dir(path...) = joinpath(dirname(@__DIR__),path...)
+
 include("Core/linearalgebra.jl")
 include("Core/mvnormal.jl"); export MvNormalFast
 include("Core/niw.jl"); export NormalInverseWishart
 include("Core/dirichletmultinomial.jl"); export DirMul
 include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
-include("Data/data.jl"); export rand_with_label, RandMixture, GridMixture
+include("Core/algorithms.jl"); export run!, setup_workers, initialize_clusters
+include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture
 include("Data/nytimes.jl"); export readNYTimes
+include("Data/visualize.jl"); export setup_visuals
 include("Models/model.jl")
-include("Models/dpgmm.jl"); export DPGMM, DPGMMStats, suffstats, updatestats, downdatestats, posterior, posterior_predictive
+include("Models/dpgmm.jl"); export DPGMM, DPGMMStats #, suffstats, updatestats, downdatestats, posterior, posterior_predictive
 include("Models/dpdmm.jl"); export DPDMM, DPDMMStats
 include("Clusters/CollapsedCluster.jl"); export CollapsedCluster, CollapsedClusters
 include("Clusters/DirectCluster.jl"); export DirectCluster, DirectClusters
 include("Clusters/SplitMergeCluster.jl"); export SplitMergeCluster, SplitMergeClusters
-include("Serial/CollapsedGibbs.jl"); export collapsed_gibbs
-include("Serial/QuasiCollapsedGibbs.jl");export quasi_collapsed_gibbs
-include("Serial/DirectGibbs.jl"); export direct_gibbs
-include("Serial/QuasiDirectGibbs.jl"); export quasi_direct_gibbs
-include("Serial/SplitMerge.jl"); export split_merge_gibbs, split_merge_gibbs!, split_merge_labels
-include("Parallel/DirectGibbsParallel.jl"); export direct_parallel!, direct_gibbs_parallel!
-include("Parallel/QuasiDirectParallel.jl"); export quasi_direct_parallel!,  quasi_direct_gibbs_parallel!
-include("Parallel/QuasiCollapsedParallel.jl");export quasi_collapsed_parallel!,  quasi_collapsed_gibbs_parallel!
-include("Parallel/SplitMergeParallel.jl");export splitmerge_parallel!, splitmerge_parallel_gibbs!
+include("Algorithms/CollapsedGibbs.jl"); export  CollapsedAlgorithm
+include("Algorithms/DirectGibbs.jl"); export DirectAlgorithm
+include("Algorithms/SplitMerge.jl"); export SplitMergeAlgorithm
+
+
+function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, observables=nothing, o...)
+    ncpu>1 && setup_workers(ncpu)
+    algo = algorithm(X; parallel=ncpu>1, o...)
+    labels,clusters,cluster0 = initialize_clusters(X,algo)
+    @time run!(algo, X, labels, clusters, cluster0; T=T, observables=observables)
+    return labels
+end
+export fit
 
 end # module
+
+# include("Serial/CollapsedGibbs.jl"); export collapsed_gibbs
+# include("Serial/QuasiCollapsedGibbs.jl");export quasi_collapsed_gibbs
+# include("Serial/DirectGibbs.jl"); export direct_gibbs
+# include("Serial/QuasiDirectGibbs.jl"); export quasi_direct_gibbs
+# include("Serial/SplitMerge.jl"); export split_merge_gibbs, split_merge_gibbs!, split_merge_labels
+# include("Parallel/DirectGibbsParallel.jl"); export direct_parallel!, direct_gibbs_parallel!
+# include("Parallel/QuasiDirectParallel.jl"); export quasi_direct_parallel!,  quasi_direct_gibbs_parallel!
+# include("Parallel/QuasiCollapsedParallel.jl");export quasi_collapsed_parallel!,  quasi_collapsed_gibbs_parallel!
+# include("Parallel/SplitMergeParallel.jl");export splitmerge_parallel!, splitmerge_parallel_gibbs!

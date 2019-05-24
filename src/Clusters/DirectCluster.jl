@@ -20,7 +20,7 @@ end
     DirectCluster(floor(Int,m.α),rand(m.θprior),m.θprior)
 
 @inline pdf(m::DirectCluster,x) = pdf(m.sampled,x)
-@inline (m::DirectCluster)(x)  = m.n*pdf(m.sampled,x)
+@inline (m::DirectCluster)(x)   = m.n*pdf(m.sampled,x)
 
 DirectClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,DirectCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))

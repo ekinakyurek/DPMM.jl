@@ -42,9 +42,9 @@ function pdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T
     D = length(x)
     μ = d.μ
     J = d.J.mat
-    y = Vector{T}(undef,D)
     s = zero(T)
 
+    y = Vector{T}(undef,D)
     @fastmath @simd for i=1:D
         @inbounds y[i] = x[i]-μ[i]
     end

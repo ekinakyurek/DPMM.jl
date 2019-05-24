@@ -1,18 +1,41 @@
-function split_merge_gibbs(X::AbstractMatrix; T::Int=1000, α::Real=1.0, ninit::Int=6, observables=nothing, modelType=DPGMM{Float64})
-    #Initialization
-    (D,N),labels,model = init(X,α,ninit,modelType)
-    sp_labels = split_merge_labels(labels)
-    #Get Clusters
-    clusters = SplitMergeClusters(model,X,sp_labels) # current clusters
-    #cluster0 = SplitMergeCluster(model,Val(true))  # empty cluster
-    #Run the gibbs sampler
-    split_merge_gibbs!(model, X, sp_labels, clusters; T=T, observables=observables)
-    return labels
+###
+#### Interface
+###
+
+struct SplitMergeAlgorithm{P, M} <: DPMMAlgorithm{P}
+    model::AbstractDPModel
+    ninit::Int
 end
 
-function split_merge_gibbs!(model, X::AbstractMatrix, labels, clusters; T=10, observables=nothing)
+function SplitMergeAlgorithm(X::AbstractMatrix{T};
+                                modelType=_default_model(T),
+                                α::Real=1, ninit::Int=1,
+                                parallel::Bool=false,
+                                merge::Bool=true,
+                                o...) where T
+    SplitMergeAlgorithm{parallel, merge}(modelType(X;α=α), ninit)
+end
+
+run!(algo::SplitMergeAlgorithm{false,M}, X, args...; o...) where M =
+    splitmerge_gibbs!(algo.model,X,args...;merge=M, o...)
+
+run!(algo::SplitMergeAlgorithm{true,M}, X, args...;o...) where M =
+    splitmerge_gibbs_parallel!(algo.model,X,args...;merge=M, o...)
+
+random_labels(X,algo::SplitMergeAlgorithm) =
+    map(l->(l,rand()>0.5),rand(1:algo.ninit,size(X,2)))
+create_clusters(X, algo::SplitMergeAlgorithm, labels) =
+    SplitMergeClusters(algo.model,X,labels)
+empty_cluster(algo::SplitMergeAlgorithm) = nothing # undefined
+
+const DEFAULT_ALGO = SplitMergeAlgorithm
+
+###
+#### Serial
+###
+function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0; merge=true, T=10, observables=nothing)
     for t in 1:T
-        #record!(observables,first.(labels),t)
+        record!(observables,labels,t)
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
@@ -28,8 +51,10 @@ function split_merge_gibbs!(model, X::AbstractMatrix, labels, clusters; T=10, ob
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
         materialize_splits!(model, X, labels, clusters, will_split)
         gc_clusters!(clusters, maybe_split)
-        will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
-        materialize_merges!(model, labels, clusters, will_merge)
+        if merge
+            will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
+            materialize_merges!(model, labels, clusters, will_merge)
+        end
     end
 end
 
@@ -222,3 +247,55 @@ function label_x2(clusters::Dict,knew::Int)
     end
     return 0
 end
+
+###
+#### Parallel
+###
+
+function splitmerge_parallel!(πs, sπs, X, range, labels, clusters)
+    for i in range
+        x = view(X,:,i)
+        probs = RestrictedClusterProbs(πs,clusters,x)
+        z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
+        labels[i] = (z,SampleSubCluster(sπs[z],clusters[z],x))
+    end
+end
+
+@inline splitmerge_parallel!(labels, clusters, πs, sπs) =
+    splitmerge_parallel!(πs, sπs, Main.X, localindices(labels), labels,clusters)
+
+function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels, clusters, empty_cluster;merge=true, T=10, observables=nothing)
+    for t in 1:T
+        record!(observables,labels,t)
+        πs          = mixture_πsv2(model.α,clusters)
+        sπs         = subcluster_πs(model.α/2,clusters)
+        maybe_split = maybeSplit(clusters)
+
+        @sync begin
+            for p in procs(labels)
+                @async remotecall_wait(splitmerge_parallel!,p,labels,clusters,πs,sπs)
+            end
+        end
+
+        update_clusters!(model, X, clusters, labels)
+        will_split = propose_splits!(model, X, labels, clusters, maybe_split)
+        materialize_splits!(model, X, labels, clusters, will_split)
+        gc_clusters!(clusters, maybe_split)
+        if merge
+            will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
+            materialize_merges!(model, labels, clusters, will_merge)
+        end
+    end
+end
+
+# function update_cluster_parallel!(cluster::Pair{Int,<:SplitMergeCluster}, labels::AbstractVector{Tuple{Int,Bool}})
+#     k,c = cluster
+#     indices = get_cluster_inds(k,labels)
+#     right   = suffstats(Main.model,Main.X[:,get_right_inds(indices,labels)])
+#     left    = suffstats(Main.model,Main.X[:,get_left_inds(indices,labels)])
+#     return Pair(k,SplitMergeCluster(c, right+left, right, left; llh_hist=c.llh_hist))
+# end
+
+# function update_clusters_parallel!(clusters::Dict, labels::AbstractVector{Tuple{Int,Bool}})
+#     return Dict(pmap(c->update_cluster_parallel!(c,labels),collect(clusters)))
+# end
