@@ -31,6 +31,8 @@ end
 @inline length(x::DPSparseVector) = x.n
 @inline getindex(X::DPSparseMatrix, ::Colon, inds::Vector{<:Integer}) = DPSparseMatrix(X.m,length(inds),X.data[inds])
 @inline getindex(X::DPSparseMatrix, ::Colon, ind::Integer) = X.data[ind]
+@inline Base.view(X::DPSparseMatrix, ::Colon, ind::Integer) = X[:,ind]
+@inline Base.view(X::DPSparseMatrix, ::Colon, inds::Vector{<:Integer}) = X[:,inds]
 @inline getindex(X::DPSparseMatrix, ind1::Integer, ind2::Integer) = X.data[ind2][ind1]
 @inline nonzeroinds(x::DPSparseVector) = x.nzind
 @inline nonzeros(x::DPSparseVector)    = x.nzval

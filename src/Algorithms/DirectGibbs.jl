@@ -41,7 +41,7 @@ function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster
         πs        = mixture_πs(model,clusters) # unnormalized weights
         @inbounds for i=1:size(X,2)
             probs     = ClusterProbs(πs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
-            znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
+            znew      = rand(GLOBAL_RNG,AliasTable(probs))  # new label
             labels[i] = label_x(clusters,znew)
         end
         clusters = DirectClusters(model,X,labels) # TODO handle empty clusters
@@ -67,7 +67,7 @@ function quasi_direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_c
         record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
             probs     = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
-            znew      =~ Categorical(probs,NoArgCheck()) # new label
+            znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = label_x(clusters,znew)
         end
         clusters = DirectClusters(model,X,labels) # TODO handle empty clusters
@@ -114,7 +114,7 @@ end
 function quasi_direct_parallel!(model, X, range, labels, clusters, empty_cluster)
     for i in range
         probs      = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
-        znew       =~ Categorical(probs,NoArgCheck()) # new label
+        znew       = rand(GLOBAL_RNG,AliasTable(probs)) # new label
         labels[i]  = label_x(clusters,znew)
     end
 end

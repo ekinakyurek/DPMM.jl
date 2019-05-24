@@ -264,7 +264,7 @@ end
 @inline splitmerge_parallel!(labels, clusters, πs, sπs) =
     splitmerge_parallel!(πs, sπs, Main.X, localindices(labels), labels,clusters)
 
-function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels, clusters, empty_cluster;merge=true, T=10, scene=nothing)
+function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
         πs          = mixture_πsv2(model.α,clusters)

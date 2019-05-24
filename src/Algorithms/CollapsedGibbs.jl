@@ -41,7 +41,7 @@ function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_clus
             clusters[z] -= x # remove xi's statistics
             isempty(clusters[z]) && delete!(clusters,z)
             probs     = CRPprobs(model,clusters,empty_cluster,x) # chinese restraunt process probabilities
-            znew      =~ Categorical(probs,NoArgCheck()) # new label
+            znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = place_x!(model,clusters,znew,x)
         end
     end
@@ -53,7 +53,7 @@ function CRPprobs(model::AbstractDPModel{V}, clusters::Dict, cluster0::AbstractC
     for (j,c) in enumerate(values(clusters))
         @inbounds p[j] = c(x)
     end
-    p[end] = cluster0(x)
+    @inbounds p[end] = cluster0(x)
     return p/sum(p)
 end
 
@@ -75,7 +75,7 @@ function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empt
         record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
             probs     = CRPprobs(model,clusters,empty_cluster, X[:,i]) # chinese restraunt process probabilities
-            znew      =~ Categorical(probs,NoArgCheck()) # new label
+            znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = label_x(clusters,znew)
         end
         clusters = CollapsedClusters(model,X,labels) # TODO handle empty clusters
@@ -98,7 +98,7 @@ end
 function quasi_collapsed_parallel!(model, X, range, labels, clusters, empty_cluster)
     for i in range
         probs      = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
-        znew       =~ Categorical(probs,NoArgCheck()) # new label
+        znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
         labels[i]  = label_x(clusters,znew)
     end
 end

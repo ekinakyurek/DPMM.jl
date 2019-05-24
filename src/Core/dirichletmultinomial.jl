@@ -16,7 +16,7 @@ params(d::DirichletFast) = (d.alpha,)
 @inline partype(d::DirichletFast{T}) where {T<:Real} = T
 
 function _rand!(d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
-    s = T(0.0)
+    s = T(0)
     n = length(x)
     α = d.alpha
     for i in 1:n
@@ -28,9 +28,9 @@ end
 @inline rand(d::DirichletCanon) = _rand!(d,similar(d.alpha))
 
 
-function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Float64)
-    D = length(DirichletFast)
-    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α)-lgamma.(prior.α))
+function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
+    D = length(prior)
+    lgamma(sum(prior.alpha))-lgamma(sum(posterior.alpha)) + sum(lgamma.(posterior.alpha) .- lgamma.(prior.alpha))
 end
 
 function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
@@ -43,7 +43,7 @@ function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
         @inbounds xi = x.nzval[i]
         @inbounds p_i = p[index]
         #s -= R(lgamma(R(xi) + 1))
-    s += xlogy(xi, p_i)
+        s += xlogy(xi, p_i)
     end
     return s
 end

@@ -4,7 +4,7 @@ struct DPDMM{T<:Real,D} <: AbstractDPModel{T,D}
 end
 
 function DPDMM(X::AbstractMatrix{<:Integer}; α::Real=1, eltype=Float64)
-    DPDMM{eltype}(eltype(α), sumcol(X) .+ Float64(1))
+    DPDMM{eltype}(eltype(α), sumcol(X) .+ eltype(1))
 end
 
 @inline DPDMM{T,D}(α::Real) where {T<:Real,D} = DPDMM{T,dim}(DirichletFast{T}(ones(D),T(α)))
