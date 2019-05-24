@@ -1,4 +1,6 @@
 using DPMM, Test
 
-include("collapsed_gibbs.jl")
-include("direct_gibbs.jl")
+include("serial_algorithms.jl")
+include("parallel_algorithms.jl")
+#include("visual_tests.jl") # run on personal computer
+include("nytimes_splitmerge.jl")
