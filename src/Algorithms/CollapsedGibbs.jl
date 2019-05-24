@@ -33,9 +33,9 @@ empty_cluster(algo::CollapsedAlgorithm) = CollapsedCluster(algo.model,Val(true))
 #### Serial
 ###
 
-function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
+function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
             x, z = X[:,i], labels[i]
             clusters[z] -= x # remove xi's statistics
@@ -70,9 +70,9 @@ function place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVe
 end
 
 
-function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
+function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
             probs     = CRPprobs(model,clusters,empty_cluster, X[:,i]) # chinese restraunt process probabilities
             znew      =~ Categorical(probs,NoArgCheck()) # new label
@@ -106,10 +106,9 @@ end
 @inline quasi_collapsed_gibbs_parallel!(labels, clusters) =
     quasi_collapsed_parallel!(Main.model,Main.X,localindices(labels),labels,clusters,Main.cluster0)
 
-
-function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_cluster; observables=nothing, T=10)
+function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         @sync begin
             for p in procs(labels)
                 @async remotecall_wait(quasi_collapsed_gibbs_parallel!,p,labels,clusters)

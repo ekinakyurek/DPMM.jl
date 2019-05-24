@@ -35,9 +35,9 @@ empty_cluster(algo::DirectAlgorithm) = DirectCluster(algo.model,Val(true))
 #### Serial
 ###
 
-function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
+function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         πs        = mixture_πs(model,clusters) # unnormalized weights
         @inbounds for i=1:size(X,2)
             probs     = ClusterProbs(πs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
@@ -62,9 +62,9 @@ function ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::Abstract
 end
 
 
-function quasi_direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, observables=nothing)
+function quasi_direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
             probs     = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
             znew      =~ Categorical(probs,NoArgCheck()) # new label
@@ -90,9 +90,9 @@ end
 @inline direct_gibbs_parallel!(labels, clusters, πs) =
     direct_parallel!(πs,Main.X,localindices(labels),labels,clusters,Main.cluster0)
 
-function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters, empty_cluster; observables=nothing, T=10)
+function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         πs = mixture_πs(model,clusters) # unnormalized weights
         @sync begin
             for p in procs(labels)
@@ -123,9 +123,9 @@ end
     quasi_direct_parallel!(Main.model,Main.X,localindices(labels),labels,clusters,Main.cluster0)
 
 
-function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters, empty_cluster; observables=nothing, T=10)
+function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         @sync begin
             for p in procs(labels)
                 @async remotecall_wait(quasi_direct_gibbs_parallel!,p,labels,clusters)

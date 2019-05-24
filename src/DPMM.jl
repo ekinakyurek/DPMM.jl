@@ -31,7 +31,7 @@ include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
 include("Core/algorithms.jl"); export run!, setup_workers, initialize_clusters
 include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture
 include("Data/nytimes.jl"); export readNYTimes
-include("Data/visualize.jl"); export setup_visuals
+include("Data/visualize.jl"); export setup_scene
 include("Models/model.jl")
 include("Models/dpgmm.jl"); export DPGMM, DPGMMStats #, suffstats, updatestats, downdatestats, posterior, posterior_predictive
 include("Models/dpdmm.jl"); export DPDMM, DPDMMStats
@@ -43,11 +43,11 @@ include("Algorithms/DirectGibbs.jl"); export DirectAlgorithm
 include("Algorithms/SplitMerge.jl"); export SplitMergeAlgorithm
 
 
-function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, observables=nothing, o...)
+function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, scene=nothing, o...)
     ncpu>1 && setup_workers(ncpu)
     algo = algorithm(X; parallel=ncpu>1, o...)
     labels,clusters,cluster0 = initialize_clusters(X,algo)
-    @time run!(algo, X, labels, clusters, cluster0; T=T, observables=observables)
+    @time run!(algo, X, labels, clusters, cluster0; T=T, scene=scene)
     return labels
 end
 export fit

@@ -1,4 +1,4 @@
-function createΣ(T,d...;α=0.01)
+function createΣ(T,d...;α=0.1)
      σ = α*randn(T,d...)
      return σ*σ'
 end

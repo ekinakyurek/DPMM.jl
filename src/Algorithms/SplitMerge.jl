@@ -33,9 +33,9 @@ const DEFAULT_ALGO = SplitMergeAlgorithm
 ###
 #### Serial
 ###
-function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0; merge=true, T=10, observables=nothing)
+function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0; merge=true, T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
@@ -264,9 +264,9 @@ end
 @inline splitmerge_parallel!(labels, clusters, πs, sπs) =
     splitmerge_parallel!(πs, sπs, Main.X, localindices(labels), labels,clusters)
 
-function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels, clusters, empty_cluster;merge=true, T=10, observables=nothing)
+function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels, clusters, empty_cluster;merge=true, T=10, scene=nothing)
     for t in 1:T
-        record!(observables,labels,t)
+        record!(scene,labels,t)
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
