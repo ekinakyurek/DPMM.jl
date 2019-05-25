@@ -59,18 +59,21 @@ function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0;
 end
 
 subcluster_πs(Δ::V, clusters::Dict) where V<:Real  =
-    Dict((k,rand(DirichletCanon([V(c.nr)+Δ,V(c.nl)+Δ]))) for (k,c) in clusters)
+    Dict((k,log.(rand(DirichletCanon([V(c.nr)+Δ,V(c.nl)+Δ])))) for (k,c) in clusters)
 
 function mixture_πsv2(α::V, clusters::Dict) where V<:Real
-    rand(DirichletCanon([(V(c.n) for c in values(clusters))...;α]))
+    log.(rand(DirichletCanon([(V(c.n) for c in values(clusters))...;α])))
 end
 
 function RestrictedClusterProbs(πs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters))
+    max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds p[j] = πs[j]*pdf(c,x)
+        @inbounds s = p[j] = πs[j]  + logprob(c,x)
+        max = s>max ? s : max
     end
-    return p/sum(p)
+    pc = exp.(p .- max)
+    return pc ./ sum(pc)
 end
 
 function maybeSplit(clusters)
@@ -83,8 +86,8 @@ function maybeSplit(clusters)
 end
 
 @inline function SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
-    p1 = πs[1]*rightpdf(cluster,x)
-    p2 = πs[2]*leftpdf(cluster,x)
+    p1 = exp(πs[1] + rightlogprob(cluster,x))
+    p2 = exp(πs[2] + leftlogprob(cluster,x))
     return rand(GLOBAL_RNG) > (p1/(p1+p2))
 end
 

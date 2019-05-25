@@ -50,12 +50,12 @@ function SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, z::Abstra
         end)
 end
 
-@inline pdf(m::SplitMergeCluster,x)         = pdf(m.sampled,x)
-@inline rightpdf(m::SplitMergeCluster,x)    = pdf(m.right,x)
-@inline leftpdf(m::SplitMergeCluster,x)     = pdf(m.left,x)
-@inline (m::SplitMergeCluster)(x)           = m.n*pdf(m.sampled,x)
-@inline (m::SplitMergeCluster)(x, ::Val{1}) = m.nr*pdf(m.rightx)
-@inline (m::SplitMergeCluster)(x, ::Val{2}) = m.nl*pdf(m.left,x)
+@inline logprob(m::SplitMergeCluster,x)      = logprob(m.sampled,x)
+@inline rightlogprob(m::SplitMergeCluster,x) = logprob(m.right,x)
+@inline leftlogprob(m::SplitMergeCluster,x)  = logprob(m.left,x)
+@inline (m::SplitMergeCluster)(x)            = log(m.n)  + logprob(m.sampled,x)
+@inline (m::SplitMergeCluster)(x, ::Val{1})  = log(m.nr) + logprob(m.rightx)
+@inline (m::SplitMergeCluster)(x, ::Val{2})  = log(m.nl) + logprob(m.left,x)
 
 @inline get_cluster_inds(key::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
     findall(l->l[1]==key,labels)

@@ -44,9 +44,11 @@ include("Algorithms/SplitMerge.jl"); export SplitMergeAlgorithm
 
 
 function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, scene=nothing, o...)
-    ncpu>1 && setup_workers(ncpu)
+    if ncpu>1
+         @sync setup_workers(ncpu)
+    end
     algo = algorithm(X; parallel=ncpu>1, o...)
-    labels,clusters,cluster0 = initialize_clusters(X,algo)
+    @sync labels, clusters, cluster0 = initialize_clusters(X,algo)
     @time run!(algo, X, labels, clusters, cluster0; T=T, scene=scene)
     return labels
 end

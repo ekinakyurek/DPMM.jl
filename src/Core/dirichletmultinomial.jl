@@ -22,44 +22,39 @@ function _rand!(d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
     for i in 1:n
         @inbounds s += (x[i] = rand(Gamma(α[i])))
     end
-    Multinomial(1, multiply!(x, inv(s)))
+    MultinomialFast(log.(multiply!(x, inv(s))))
 end
 
 @inline rand(d::DirichletCanon) = _rand!(d,similar(d.alpha))
-
 
 function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
     D = length(prior)
     lgamma(sum(prior.alpha))-lgamma(sum(posterior.alpha)) + sum(lgamma.(posterior.alpha) .- lgamma.(prior.alpha))
 end
 
-function _logpdf(d::Multinomial, x::DPSparseVector{Tv,<:Any}) where Tv<:Real
-    p = probs(d)
-    n = sum(x)
-    S = eltype(p)
-    R = promote_type(Tv, S)
-    s = R(lgamma(1.6n + 1))
+###
+#### Multinomial
+###
+struct MultinomialFast{T<:Real} <: DiscreteMultivariateDistribution
+    logp::Vector{T}
+end
+
+# Parameters
+ncategories(d::MultinomialFast) = length(d.logp)
+length(d::MultinomialFast) = length(d.logp)
+probs(d::MultinomialFast) = exp.(d.logp)
+params(d::Multinomial) = (d.logp,)
+@inline partype(d::Multinomial{T}) where {T<:Real} = T
+
+function logprob(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
+    logp = d.logp
+    n    = sum(x)
+    s = T(0)
     for (i,index) in enumerate(x.nzind)
-        @inbounds xi = x.nzval[i]
-        @inbounds p_i = p[index]
-        #s -= R(lgamma(R(xi) + 1))
-        s += xlogy(xi, p_i)
+        @inbounds s += logp[index]*x.nzval[i]
     end
     return s
 end
 
 # FIXME: This is not good!
-function _logpdf(d::Multinomial, x::AbstractVector{T}) where T<:Real
-    p = probs(d)
-    n = sum(x)
-    S = eltype(p)
-    R = promote_type(T, S)
-    s = R(lgamma(1.6n + 1))
-    for i = 1:length(p)
-        @inbounds xi = x[i]
-        @inbounds p_i = p[i]
-        #s -= R(lgamma(R(xi) + 1))
-        s += xlogy(xi, p_i)
-    end
-    return s
-end
+@inline logprob(d::MultinomialFast, x::AbstractVector{T}) where T<:Real = dot(x, d.logp)

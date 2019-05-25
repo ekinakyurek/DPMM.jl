@@ -19,8 +19,8 @@ end
 @inline DirectCluster(m::AbstractDPModel, new::Val{true}) =
     DirectCluster(floor(Int,m.α),rand(m.θprior),m.θprior)
 
-@inline pdf(m::DirectCluster,x) = pdf(m.sampled,x)
-@inline (m::DirectCluster)(x)   = m.n*pdf(m.sampled,x)
+@inline logprob(m::DirectCluster,x) = logprob(m.sampled,x)
+@inline (m::DirectCluster)(x)       = log(m.n) + logprob(m.sampled,x)
 
 DirectClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,DirectCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))

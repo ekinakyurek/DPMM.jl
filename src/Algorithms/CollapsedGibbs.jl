@@ -50,11 +50,15 @@ end
 
 function CRPprobs(model::AbstractDPModel{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters)+1)
+    max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds p[j] = c(x)
+        @inbounds s = p[j] = c(x)
+        max = s>max ? s : max
     end
-    @inbounds p[end] = cluster0(x)
-    return p/sum(p)
+    @inbounds s = p[end] = cluster0(x)
+    max = s>max ? s : max
+    pc = exp.(p .- max)
+    return pc ./ sum(pc)
 end
 
 function place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)

@@ -49,16 +49,20 @@ function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster
 end
 
 function mixture_πs(model::AbstractDPModel{V}, clusters::Dict) where V<:Real
-    rand(DirichletCanon([(V(c.n) for c in values(clusters))...;model.α]))
+    log.(rand(DirichletCanon([(V(c.n) for c in values(clusters))...;model.α])))
 end
 
 function ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters)+1)
+    max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds p[j] = πs[j]*pdf(c,x)
+        @inbounds s = p[j] = πs[j] + logprob(c,x)
+        max = s>max ? s : max
     end
-    @inbounds p[end] = πs[end]*pdf(cluster0,x)
-    return p/sum(p)
+    @inbounds s = p[end] = πs[end] + logprob(cluster0,x)
+    max = s>max ? s : max
+    pc = exp.(p .- max)
+    return pc ./ sum(pc)
 end
 
 

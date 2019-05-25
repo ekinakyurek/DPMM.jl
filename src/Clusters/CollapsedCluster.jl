@@ -27,8 +27,8 @@ end
 @inline +(c::CollapsedCluster{V,P},x::AbstractVector) where {V<:Distribution,P<:Distribution} =
     CollapsedCluster{V,P}(c.n+1, update_predictive(c.prior,c.predictive,x,c.n), c.prior)
 
-@inline pdf(m::CollapsedCluster,x) = pdf(m.predictive,x)
-@inline (m::CollapsedCluster)(x) = m.n * pdf(m.predictive,x)
+@inline logprob(m::CollapsedCluster,x) = logprob(m.predictive,x)
+@inline (m::CollapsedCluster)(x) = log(m.n) + logprob(m.predictive,x)
 
 CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
