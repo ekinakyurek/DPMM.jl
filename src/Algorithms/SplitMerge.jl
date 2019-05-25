@@ -265,7 +265,7 @@ function splitmerge_parallel!(πs, sπs, X, range, labels, clusters)
 end
 
 @inline splitmerge_parallel!(labels, clusters, πs, sπs) =
-    splitmerge_parallel!(πs, sπs, Main.X, localindices(labels), labels,clusters)
+    splitmerge_parallel!(πs, sπs, Main._X, localindices(labels), labels,clusters)
 
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
     for t in 1:T
@@ -294,8 +294,8 @@ end
 # function update_cluster_parallel!(cluster::Pair{Int,<:SplitMergeCluster}, labels::AbstractVector{Tuple{Int,Bool}})
 #     k,c = cluster
 #     indices = get_cluster_inds(k,labels)
-#     right   = suffstats(Main.model,Main.X[:,get_right_inds(indices,labels)])
-#     left    = suffstats(Main.model,Main.X[:,get_left_inds(indices,labels)])
+#     right   = suffstats(Main.model,Main._X[:,get_right_inds(indices,labels)])
+#     left    = suffstats(Main.model,Main._X[:,get_left_inds(indices,labels)])
 #     return Pair(k,SplitMergeCluster(c, right+left, right, left; llh_hist=c.llh_hist))
 # end
 

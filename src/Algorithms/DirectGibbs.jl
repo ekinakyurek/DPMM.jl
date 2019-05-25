@@ -92,7 +92,7 @@ function direct_parallel!(πs, X, range, labels, clusters, empty_cluster)
 end
 
 @inline direct_gibbs_parallel!(labels, clusters, πs) =
-    direct_parallel!(πs,Main.X,localindices(labels),labels,clusters,Main.cluster0)
+    direct_parallel!(πs,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
 function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
@@ -124,7 +124,7 @@ function quasi_direct_parallel!(model, X, range, labels, clusters, empty_cluster
 end
 
 @inline quasi_direct_gibbs_parallel!(labels, clusters) =
-    quasi_direct_parallel!(Main.model,Main.X,localindices(labels),labels,clusters,Main.cluster0)
+    quasi_direct_parallel!(Main._model,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
 
 function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)

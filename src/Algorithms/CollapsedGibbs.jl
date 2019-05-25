@@ -108,7 +108,7 @@ function quasi_collapsed_parallel!(model, X, range, labels, clusters, empty_clus
 end
 
 @inline quasi_collapsed_gibbs_parallel!(labels, clusters) =
-    quasi_collapsed_parallel!(Main.model,Main.X,localindices(labels),labels,clusters,Main.cluster0)
+    quasi_collapsed_parallel!(Main._model,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
 function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
