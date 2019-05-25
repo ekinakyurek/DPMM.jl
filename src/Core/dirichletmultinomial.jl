@@ -43,8 +43,8 @@ end
 ncategories(d::MultinomialFast) = length(d.logp)
 length(d::MultinomialFast) = length(d.logp)
 probs(d::MultinomialFast) = exp.(d.logp)
-params(d::Multinomial) = (d.logp,)
-@inline partype(d::Multinomial{T}) where {T<:Real} = T
+params(d::MultinomialFast) = (d.logp,)
+@inline partype(d::MultinomialFast{T}) where {T<:Real} = T
 
 function logprob(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     logp = d.logp
