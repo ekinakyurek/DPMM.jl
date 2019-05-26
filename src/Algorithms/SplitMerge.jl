@@ -86,8 +86,15 @@ function maybeSplit(clusters)
 end
 
 @inline function SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
-    p1 = exp(πs[1] + rightlogprob(cluster,x))
-    p2 = exp(πs[2] + leftlogprob(cluster,x))
+    p1 = πs[1] + rightlogprob(cluster,x)
+    p2 = πs[2] + leftlogprob(cluster,x)
+    if p1>p2
+        p2 = exp(p2-p1)
+        p1 = 1
+    else
+        p1 = exp(p1-p2)
+        p2 = 1
+    end
     return rand(GLOBAL_RNG) > (p1/(p1+p2))
 end
 
