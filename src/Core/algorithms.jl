@@ -8,6 +8,7 @@ function setup_workers(ncpu)
         @warn("setting up parallel processes, takes a while for once!")
         addprocs(ncpu; exeflags="--project=$(dir())") # enable threaded blass
         @everywhere @eval Main using DPMM, SharedArrays, Distributed
+        @info "workers: $(Main.Distributed.workers()) initialized"
     end
 end
 
@@ -17,8 +18,11 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
     cluster0  = empty_cluster(algo)
     if P
         ws = workers()
-        @everywhere ws (_X        = $(X))
-        @everywhere ws (_model    = $(algo.model))
+        @info "sending model to workers"
+        @everywhere ws (_model = $(algo.model))
+        @info "sending data to workers"
+        @everywhere ws (_X = $(X))
+        @info "sending cluster0 to workers"
         @everywhere ws (_cluster0 = $(cluster0))
         return SharedArray(labels), clusters, cluster0
     end

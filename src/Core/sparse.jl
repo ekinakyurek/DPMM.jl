@@ -47,6 +47,28 @@ function getindex(x::DPSparseVector{Tv,<:Any}, ind::Integer) where Tv
     end
 end
 
+
+function Base.setindex!(x::DPSparseVector{Tv,Ti}, v::Tv, i::Ti) where {Tv,Ti<:Integer}
+    checkbounds(x, i)
+    nzind = nonzeroinds(x)
+    nzval = nonzeros(x)
+
+    m = length(nzind)
+    k = searchsortedfirst(nzind, i)
+    if 1 <= k <= m && nzind[k] == i  # i found
+        nzval[k] = v
+    else  # i not found
+        if v != 0
+            insert!(nzind, k, i)
+            insert!(nzval, k, v)
+        end
+    end
+    x
+end
+
+Base.setindex!(x::DPSparseVector{Tv,Ti}, v, i::Integer) where {Tv,Ti<:Integer} =
+    setindex!(x, convert(Tv, v), convert(Ti, i))
+
 function sumcol(X::DPSparseMatrix{Tv,<:Any}) where Tv
     y = zeros(Tv,X.m)
     for i=1:X.n
