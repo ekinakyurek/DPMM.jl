@@ -28,7 +28,6 @@ end
 @inline rand(d::DirichletCanon) = _rand!(d,similar(d.alpha))
 
 function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
-    D = length(prior)
     lgamma(sum(prior.alpha))-lgamma(sum(posterior.alpha)) + sum(lgamma.(posterior.alpha) .- lgamma.(prior.alpha))
 end
 

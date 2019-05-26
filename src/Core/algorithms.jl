@@ -16,9 +16,10 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
     clusters  = create_clusters(X,algo,labels)
     cluster0  = empty_cluster(algo)
     if P
-        @everywhere _X        = $X
-        @everywhere _model    = $(algo.model)
-        @everywhere _cluster0 = $cluster0
+        ws = workers()
+        @everywhere ws (_X        = $(X))
+        @everywhere ws (_model    = $(algo.model))
+        @everywhere ws (_cluster0 = $(cluster0))
         return SharedArray(labels), clusters, cluster0
     end
     return labels, clusters, cluster0
