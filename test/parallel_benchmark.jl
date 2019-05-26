@@ -41,32 +41,32 @@ const 𝒪 = parser(ARGS)
 gmodel = RandMixture(𝒪[:K])
 X,clabels = rand_with_label(gmodel,𝒪[:N])
 
-@info "Benchmarking Quasi-Collapsed Algorithm"
+println("Benchmarking Quasi-Collapsed Algorithm")
 fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true)
 _,qct = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-@info "Benchmarking Direct Algorithm"
+println("Benchmarking Direct Algorithm")
 fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
 _,dt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-@info "Benchmarking Split Merge Algorithm"
+println("Benchmarking Split Merge Algorithm")
 fit(X; algorithm=SplitMergeAlgorithm,T=10, ninit=1)
 _,smt = fit(X; algorithm=SplitMergeAlgorithm,T=𝒪[:T],ninit=𝒪[:Kinit], benchmark=true)
 
 
-@info "Benchmarking Quasi-Collapsed Algorithm with $(𝒪[:ncpu], benchmark=true) workers"
+println("Benchmarking Quasi-Collapsed Algorithm with $(𝒪[:ncpu]) workers")
 fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], ncpu=𝒪[:ncpu], benchmark=true)
 fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 _,qcpt= fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 
-@info "Benchmarking Direct Algorithm with with $(𝒪[:ncpu], benchmark=true) workers"
+println("Benchmarking Direct Algorithm with with $(𝒪[:ncpu]) workers")
 fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], ncpu=𝒪[:ncpu], benchmark=true)
 fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 _,dpt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 
-@info "Benchmarking Split-Merge Algorithm with $(𝒪[:ncpu], benchmark=true) workers"
+println("Benchmarking Split-Merge Algorithm with $(𝒪[:ncpu]) workers")
 fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=1, ncpu=𝒪[:ncpu], benchmark=true)
 fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 _,smpt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
 
-println("N\tD\tα\tK\tKinit\tCollapsed\tCollapsed-P\tDirect\tDirect-P,S-M\tS-M-P\t")
+println("N\tD\tα\tK\tKinit\tCollapsed\tCollapsed-P\tDirect\tDirect-P\tS-M\tS-M-P\t")
 print("$(𝒪[:N])\t$(𝒪[:D])\t$(𝒪[:alpha])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t")
 println("$(qct)\t$(qcpt)\t$(dt)\t$(dpt)\t$(smt)\t$(smpt)")
