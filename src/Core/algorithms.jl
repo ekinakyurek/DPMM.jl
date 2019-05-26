@@ -18,11 +18,8 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
     cluster0  = empty_cluster(algo)
     if P
         ws = workers()
-        @info "sending model to workers"
         @everywhere ws (_model = $(algo.model))
-        @info "sending data to workers"
         @everywhere ws (_X = $(X))
-        @info "sending cluster0 to workers"
         @everywhere ws (_cluster0 = $(cluster0))
         return SharedArray(labels), clusters, cluster0
     end
