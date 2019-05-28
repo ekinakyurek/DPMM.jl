@@ -50,6 +50,17 @@ function SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, z::Abstra
         end)
 end
 
+
+function SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
+    uniquez   = unique((l[1] for l in z))
+    Dict(map(uniquez) do k
+            indices = get_cluster_inds(k,z)
+            sr = suffstats(model,X[:,get_right_inds(indices,z)])
+            sl = suffstats(model,X[:,get_left_inds(indices,z)])
+            (k, (sr,sl))
+        end)
+end
+
 @inline logprob(m::SplitMergeCluster,x)      = logprob(m.sampled,x)
 @inline rightlogprob(m::SplitMergeCluster,x) = logprob(m.right,x)
 @inline leftlogprob(m::SplitMergeCluster,x)  = logprob(m.left,x)

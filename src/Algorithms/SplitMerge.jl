@@ -263,16 +263,25 @@ end
 ###
 
 function splitmerge_parallel!(πs, sπs, X, range, labels, clusters)
-    for i in range
+    for i=1:size(X,2)
         x = view(X,:,i)
         probs = RestrictedClusterProbs(πs,clusters,x)
         z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
-        labels[i] = (z,SampleSubCluster(sπs[z],clusters[z],x))
+        labels[range[i]] = (z,SampleSubCluster(sπs[z],clusters[z],x))
     end
+    return SuffStats(Main._model, X, convert(Array,labels[range]))
 end
 
 @inline splitmerge_parallel!(labels, clusters, πs, sπs) =
     splitmerge_parallel!(πs, sπs, Main._X, localindices(labels), labels,clusters)
+
+function update_clusters!(m::AbstractDPModel, clusters::Dict, stats::Dict{Int,<:Tuple})
+    for (k,c) in clusters
+        stat = stats[k]
+        clusters[k] = SplitMergeCluster(c, stat[1]+stat[2], stat[1], stat[2]; llh_hist=c.llh_hist)
+    end
+    return clusters
+end
 
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
     for t in 1:T
@@ -280,14 +289,13 @@ function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArra
         πs          = mixture_πsv2(model.α,clusters)
         sπs         = subcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
-
+        stats = Dict{Int,Tuple{<:SufficientStats, <:SufficientStats}}[]
         @sync begin
             for p in procs(labels)
-                @async remotecall_wait(splitmerge_parallel!,p,labels,clusters,πs,sπs)
+                @async push!(stats,remotecall_fetch(splitmerge_parallel!,p,labels,clusters,πs,sπs))
             end
         end
-
-        update_clusters!(model, X, clusters, labels)
+        update_clusters!(model, clusters, gather_stats(stats))
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
         materialize_splits!(model, X, labels, clusters, will_split)
         gc_clusters!(clusters, maybe_split)
@@ -296,6 +304,22 @@ function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArra
             materialize_merges!(model, labels, clusters, will_merge)
         end
     end
+end
+
+
+function gather_stats(stats::Array{Dict{Int, Tuple{<:SufficientStats, <:SufficientStats}},1})
+    gstats = empty(first(stats))
+    for s in stats
+        for (k,v) in s
+            if haskey(gstats,k)
+                gs = gstats[k]
+                gstats[k] = (gs[1]+v[1], gs[2]+v[2])
+            else
+                gstats[k] = (v[1], v[2])
+            end
+        end
+    end
+    return gstats
 end
 
 # function update_cluster_parallel!(cluster::Pair{Int,<:SplitMergeCluster}, labels::AbstractVector{Tuple{Int,Bool}})

@@ -24,3 +24,6 @@ end
 
 DirectClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,DirectCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
+
+DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats}) =
+    Dict((k,DirectCluster(model,stats[k])) for k in keys(stats))

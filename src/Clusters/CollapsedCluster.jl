@@ -15,7 +15,7 @@ end
 @inline CollapsedCluster(m::AbstractDPModel,X::AbstractArray) =
     CollapsedCluster(m, suffstats(m,X))
 
-@inline CollapsedCluster(m::AbstractDPModel,s::SufficientStats) =
+@inline CollapsedCluster(m::AbstractDPModel, s::SufficientStats) =
     CollapsedCluster(s.n, posterior_predictive(m,s), m.θprior)
 
 @inline CollapsedCluster(m::AbstractDPModel,new::Val{true}) =
@@ -32,6 +32,12 @@ end
 
 CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
     Dict((k,CollapsedCluster(model,X[:,findall(l->l==k,z)])) for k in unique(z))
+
+SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int}) =
+    Dict((k,suffstats(model,X[:,findall(l->l==k,z)])) for k in unique(z))
+
+CollapsedClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats}) =
+    Dict((k,CollapsedCluster(model,stats[k])) for k in keys(stats))
 
 #
 # function Base.hash(obj::CollapsedCluster, h::UInt)

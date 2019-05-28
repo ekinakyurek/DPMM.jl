@@ -78,7 +78,7 @@ function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empt
     for t in 1:T
         record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
-            probs     = CRPprobs(model,clusters,empty_cluster, X[:,i]) # chinese restraunt process probabilities
+            probs     = CRPprobs(model,clusters,empty_cluster, view(X,:,i)) # chinese restraunt process probabilities
             znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = label_x(clusters,znew)
         end
@@ -100,11 +100,12 @@ end
 ###
 
 function quasi_collapsed_parallel!(model, X, range, labels, clusters, empty_cluster)
-    for i in range
-        probs      = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
+    for i=1:size(X,2)
+        probs      = CRPprobs(model,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
         znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
-        labels[i]  = label_x(clusters,znew)
+        labels[range[i]]  = label_x(clusters,znew)
     end
+    return SuffStats(model,X, convert(Array,labels[range]))
 end
 
 @inline quasi_collapsed_gibbs_parallel!(labels, clusters) =
@@ -113,11 +114,42 @@ end
 function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
         record!(scene,labels,t)
+        stats = Dict{Int,<:SufficientStats}[]
         @sync begin
             for p in procs(labels)
-                @async remotecall_wait(quasi_collapsed_gibbs_parallel!,p,labels,clusters)
+                @async push!(stats,remotecall_fetch(quasi_collapsed_gibbs_parallel!,p,labels,clusters))
             end
         end
-        clusters = CollapsedClusters(model,X,labels)
+        clusters = CollapsedClusters(model,gather_stats(stats))
     end
+end
+
+
+function gather_stats(stats::Array{Dict{Int, <: Tuple},1})
+    gstats = empty(first(stats))
+    for s in stats
+        for (k,v) in s
+            if haskey(gstats,k)
+                gs = gstats[k]
+                gstats[k] = (gs[1]+v[1], gs[2]+v[2])
+            else
+                gstats[k] = (v[1], v[2])
+            end
+        end
+    end
+    return gstats
+end
+
+function gather_stats(stats::Array{Dict{Int,<: SufficientStats},1})
+    gstats = empty(first(stats))
+    for s in stats
+        for (k,v) in s
+            if haskey(gstats,k)
+                gstats[k] = gstats[k] + v
+            else
+                gstats[k] = v
+            end
+        end
+    end
+    return gstats
 end

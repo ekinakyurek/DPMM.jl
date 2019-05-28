@@ -84,11 +84,12 @@ end
 ###
 
 function direct_parallel!(πs, X, range, labels, clusters, empty_cluster)
-    for i in range
+    for i=1:size(X,2)
         probs      = ClusterProbs(πs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
         znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
-        labels[i]  = label_x(clusters,znew)
+        labels[range[i]]  = label_x(clusters,znew)
     end
+    return SuffStats(Main._model, X, convert(Array,labels[range]))
 end
 
 @inline direct_gibbs_parallel!(labels, clusters, πs) =
@@ -98,12 +99,13 @@ function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters, empty_c
     for t=1:T
         record!(scene,labels,t)
         πs = mixture_πs(model,clusters) # unnormalized weights
+        stats = Dict{Int,<:SufficientStats}[]
         @sync begin
             for p in procs(labels)
-                @async remotecall_wait(direct_gibbs_parallel!,p,labels,clusters,πs)
+                @async push!(stats,remotecall_fetch(direct_gibbs_parallel!,p,labels,clusters,πs))
             end
         end
-        clusters = DirectClusters(model,X,labels)
+        clusters = DirectClusters(model,gather_stats(stats))
     end
 end
 
@@ -116,11 +118,12 @@ end
 
 
 function quasi_direct_parallel!(model, X, range, labels, clusters, empty_cluster)
-    for i in range
-        probs      = CRPprobs(model,clusters,empty_cluster,X[:,i]) # chinese restraunt process probabilities
+    for i=1:size(X,2)
+        probs      = CRPprobs(model,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
         znew       = rand(GLOBAL_RNG,AliasTable(probs)) # new label
-        labels[i]  = label_x(clusters,znew)
+        labels[range[i]] = label_x(clusters,znew)
     end
+    return SuffStats(model, X, convert(Array,labels[range]))
 end
 
 @inline quasi_direct_gibbs_parallel!(labels, clusters) =
@@ -130,11 +133,12 @@ end
 function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
         record!(scene,labels,t)
+        stats = Dict{Int,<:SufficientStats}[]
         @sync begin
             for p in procs(labels)
-                @async remotecall_wait(quasi_direct_gibbs_parallel!,p,labels,clusters)
+                @async push!(stats,remotecall_fetch(quasi_direct_gibbs_parallel!,p,labels,clusters))
             end
         end
-        clusters = DirectClusters(model,X,labels)
+        clusters = DirectClusters(model,gather_stats(stats))
     end
 end

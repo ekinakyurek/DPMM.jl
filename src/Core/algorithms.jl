@@ -18,10 +18,13 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
     cluster0  = empty_cluster(algo)
     if P
         ws = workers()
-        @everywhere ws (_model = $(algo.model))
-        @everywhere ws (_X = $(X))
-        @everywhere ws (_cluster0 = $(cluster0))
-        return SharedArray(labels), clusters, cluster0
+        labels = SharedArray(labels)
+        @everywhere ws _model    = $(algo.model)
+        @everywhere ws _cluster0 = $cluster0
+        @sync for p in procs(labels)
+            inds = remotecall_fetch(localindices,p,labels)
+            @async @everywhere [p] _X = $(X[:,inds])
+        end
     end
     return labels, clusters, cluster0
 end
