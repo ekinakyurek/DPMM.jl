@@ -1,3 +1,7 @@
+"""
+   `DPGMM{T<:Real,D} <: AbstractDPModel{T,D}`
+    Class for DP Gaussian Mixture Models
+"""
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalInverseWishart{T}
     α::T
@@ -18,6 +22,11 @@ end
 
 @inline stattype(::DPGMM{T}) where T = DPGMMStats{T}
 
+
+"""
+   `DPGMMStats{T<:Real} <: SufficientStats`
+    Sufficient statistics for Gaussian Models
+"""
 struct DPGMMStats{T<:Real} <: SufficientStats
     nμ::Vector{T}
     S::Matrix{T}

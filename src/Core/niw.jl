@@ -23,9 +23,6 @@ function NormalInverseWishart(μ::Vector{U}, λ::Real,
     return NormalInverseWishart{T}(Vector{T}(μ), T(λ), PDMat(Ψ), T(ν))
 end
 
-# We sart λ0=1,ν0=D+3. So we in this setting df=ν-D+1 => λ=df-1
-# If you change ν0-λ0 in below,
-# downdate_posterior_predictive and update_posterior_predictive does't work correctly.
 NormalInverseWishart{T}(n::Int) where T<:Real =
     NormalInverseWishart(zeros(T,n),T(1),Matrix{T}(I,n,n),T(n)+3)
 

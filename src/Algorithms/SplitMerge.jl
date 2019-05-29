@@ -2,6 +2,27 @@
 #### Interface
 ###
 
+"""
+  `SplitMergeAlgorithm{P,M} <: DPMMAlgorithm{P}`
+
+  Test it via:
+  ```julia
+      labels = fit(X; algorithm = SplitMergeAlgorithm)
+  ```
+
+  `P` stands for parallel, M stands for merge
+  `M=false` algorithm doesn't do merge moves at all, so it is not exact
+   The number of workers in parallel algorithm can passed by `ncpu` keyword argument to `run!` function
+
+   Provides following methods
+   - `SplitMergeAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α::Real=1, ninit::Int=1, parallel::Bool=false, merge::Bool=false, o...)`
+   - `random_labels(X::AbstractMatrix,algo::SplitMergeAlgorithm) where P`
+   - `create_clusters(X::AbstractMatrix,algo::SplitMergeAlgorithm,labels) where P`
+   - `empty_cluster(algo::SplitMergeAlgorithm) where P` : returns nothing because it is not needed
+   - `run!(algo::SplitMergeAlgorithm{P,M}, X, labels, clusters, emptycluster;o...) where {P,M}`
+
+   Other generic functions is implemented on top of these core functions.
+"""
 struct SplitMergeAlgorithm{P, M} <: DPMMAlgorithm{P}
     model::AbstractDPModel
     ninit::Int
@@ -28,6 +49,7 @@ create_clusters(X, algo::SplitMergeAlgorithm, labels) =
     SplitMergeClusters(algo.model,X,labels)
 empty_cluster(algo::SplitMergeAlgorithm) = nothing # undefined
 
+# Default algorithm for DPMM.jl is SplitMergeAlgorithm.
 const DEFAULT_ALGO = SplitMergeAlgorithm
 
 ###
@@ -36,17 +58,16 @@ const DEFAULT_ALGO = SplitMergeAlgorithm
 function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0; merge=true, T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
-        πs          = mixture_πsv2(model.α,clusters)
-        sπs         = subcluster_πs(model.α/2,clusters)
+        logπs          = logmixture_πs(model.α,clusters)
+        logsπs         = logsubcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
 
         @inbounds for i=1:size(X,2) # make parallel
             x = view(X,:,i)
-            probs = RestrictedClusterProbs(πs,clusters,x)
+            probs = RestrictedClusterProbs(logπs,clusters,x)
             z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
-            labels[i] = (z,SampleSubCluster(sπs[z],clusters[z],x))
+            labels[i] = (z,SampleSubCluster(logsπs[z],clusters[z],x))
         end
-
         update_clusters!(model,X,clusters,labels)
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
         materialize_splits!(model, X, labels, clusters, will_split)
@@ -58,25 +79,26 @@ function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0;
     end
 end
 
-subcluster_πs(Δ::V, clusters::Dict) where V<:Real  =
-    Dict((k,log.(rand(DirichletCanon([V(c.nr)+Δ,V(c.nl)+Δ])))) for (k,c) in clusters)
+logsubcluster_πs(Δ::V, clusters::Dict{Int,<:SplitMergeCluster}) where V<:Real  =
+    Dict((k,log.(rand(DirichletCanon([V(population(c,Val(false)))+Δ,V(population(c,Val(true)))+Δ])))) for (k,c) in clusters)
 
-function mixture_πsv2(α::V, clusters::Dict) where V<:Real
-    log.(rand(DirichletCanon([(V(c.n) for c in values(clusters))...;α])))
-end
+"""
+    RestrictedClusterProbs(πs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
 
-function RestrictedClusterProbs(πs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
+Returns normalized probability vector for a data point being any cluster
+"""
+function RestrictedClusterProbs(logπs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters))
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds s = p[j] = πs[j]  + logprob(c,x)
+        @inbounds s = p[j] = logπs[j]  + logαpdf(c,x)
         max = s>max ? s : max
     end
     pc = exp.(p .- max)
     return pc ./ sum(pc)
 end
 
-function maybeSplit(clusters)
+function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster})
     s = Dict{Int,Bool}()
     for (k,c) in clusters
         llavg = sum(c.llh_hist)/length(c.llh_hist)
@@ -85,17 +107,19 @@ function maybeSplit(clusters)
     return s
 end
 
-@inline function SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
-    p1 = πs[1] + rightlogprob(cluster,x)
-    p2 = πs[2] + leftlogprob(cluster,x)
+"""
+     `SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real`
+
+Returns normalized probability vector for a data point being right or left subcluster
+"""
+@inline function SampleSubCluster(logπs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
+    p1 = logπs[1] + logαpdf(cluster,x, Val(false))
+    p2 = logπs[2] + logαpdf(cluster,x, Val(true))
     if p1>p2
-        p2 = exp(p2-p1)
-        p1 = 1
+        return rand(GLOBAL_RNG) > (1/(1+exp(p2-p1)))
     else
-        p1 = exp(p1-p2)
-        p2 = 1
+        return rand(GLOBAL_RNG) > (p1/(p1+1))
     end
-    return rand(GLOBAL_RNG) > (p1/(p1+p2))
 end
 
 
@@ -126,10 +150,10 @@ function propose_merges(m::AbstractDPModel{T}, clusters::Dict{Int,<:SplitMergeCl
             s = s1+s2
             p  = posterior(m,s)
             prior = m.θprior
-            logH = -logα+lgamma(m.α)-2*lgamma(0.5*m.α)-log(100)+
-                    lgamma(s.n)-lgamma(s.n+m.α)+
-                    lgamma(s1.n+0.5*m.α)-lgamma(s1.n) +
-                    lgamma(s2.n+0.5*m.α)-lgamma(s2.n)+
+            logH = -logα+lgamma(α)-2*lgamma(0.5*α)-log(100)+
+                    lgamma(s.n)-lgamma(s.n+α)+
+                    lgamma(s1.n+0.5*α)-lgamma(s1.n) +
+                    lgamma(s2.n+0.5*α)-lgamma(s2.n)+
                     lmllh(prior,p,s.n)-lmllh(prior,c1.post,s1.n)-
                     lmllh(prior,c2.post,s2.n)
 
@@ -149,7 +173,7 @@ function propose_splits!(m::AbstractDPModel, X::AbstractMatrix, labels::Abstract
             if c.nr == 0 || c.nl == 0
                 c = reset_cluster!(m,X,labels,clusters,k)
             end
-            logH = logα+lgamma(c.nr)+lgamma(c.nl)-lgamma(c.n)+c.llhs[2]+c.llhs[3]-c.llhs[1]
+            logH = logα+lgamma(population(c,Val(false)))+lgamma(population(c,Val(true)))-lgamma(population(c))+c.llhs[2]+c.llhs[3]-c.llhs[1]
             will_split[k] = (logH>0 || logH>log(rand()))
         else
             will_split[k] = false
@@ -192,7 +216,7 @@ function materialize_splits!(model, X, labels, clusters, will_split)
         else
             c = clusters[k]
             if c.n != 0
-                clusters[k] = SplitMergeCluster(c.n, c.nr, c.nl,c.s,
+                clusters[k] = SplitMergeCluster(population(c), population(c,Val(false)), population(c,Val(true)),c.s,
                                                 rand(c.post), rand(c.rightpost), rand(c.leftpost),
                                                 c.post, c.rightpost, c.leftpost,
                                                 c.llhs, c.llh_hist, c.prior)
@@ -251,9 +275,11 @@ function split_indices!(kold::Int, knew::Int,labels::AbstractVector{Tuple{Int,Bo
     end
 end
 
-function label_x2(clusters::Dict,knew::Int)
+function label_x2(clusters::Dict{<:Int, <:Any}, knew::Int)
     for (i,k) in enumerate(keys(clusters))
-        i==knew && return k
+        if i==knew
+            return k
+        end
     end
     return 0
 end
@@ -286,8 +312,8 @@ end
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
-        πs          = mixture_πsv2(model.α,clusters)
-        sπs         = subcluster_πs(model.α/2,clusters)
+        πs          = logmixture_πs(model.α,clusters)
+        sπs         = logsubcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
         stats = Dict{Int,Tuple{<:SufficientStats, <:SufficientStats}}[]
         @sync begin
@@ -306,7 +332,7 @@ function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArra
     end
 end
 
-
+#Gathers parallely collected sufficient stats
 function gather_stats(stats::Array{Dict{Int, Tuple{<:SufficientStats, <:SufficientStats}},1})
     gstats = empty(first(stats))
     for s in stats

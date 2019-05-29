@@ -1,3 +1,8 @@
+"""
+    `setup_scene(X)`
+
+Initialize plots for visualizing 2D data
+"""
 function setup_scene(X)
     if !isdefined(Main,:scene)
         @warn "setting up the plot, takes a while for once"

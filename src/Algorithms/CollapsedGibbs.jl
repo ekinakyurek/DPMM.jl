@@ -2,6 +2,28 @@
 #### Interface
 ###
 
+"""
+  `CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}`
+
+  Test it via:
+  ```julia
+      labels = fit(X; algorithm = CollapsedAlgorithm)
+   ```
+
+  `P` stands for parallel, Q stands for quasi.
+  Quasi algorithm updates the clusters only in the end of each iteration.
+  Parallel algorithm is only valid for quasi-collapsed algorithm,
+  number of workers can passed by `ncpu` keyword argument to `run!` function
+
+   Provides following methods
+   - `CollapsedAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α::Real=1, ninit::Int=1, parallel::Bool=false, quasi::Bool=false, o...)``
+   - `random_labels(X::AbstractMatrix,algo::CollapsedAlgorithm) where P`
+   - `create_clusters(X::AbstractMatrix,algo::CollapsedAlgorithm,labels) where P`
+   - `empty_cluster(algo::CollapsedAlgorithm) where P : an empty cluster`
+   - `run!(algo::CollapsedAlgorithm{P,Q}, X, labels, clusters, emptycluster; o...) where {P,Q}`
+
+   Other generic functions is implemented on top of these core functions.
+"""
 struct CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
     model::AbstractDPModel
     ninit::Int
@@ -33,6 +55,7 @@ empty_cluster(algo::CollapsedAlgorithm) = CollapsedCluster(algo.model,Val(true))
 #### Serial
 ###
 
+#Serial Collapsed Gibbs Algorithm
 function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
@@ -40,28 +63,38 @@ function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_clus
             x, z = X[:,i], labels[i]
             clusters[z] -= x # remove xi's statistics
             isempty(clusters[z]) && delete!(clusters,z)
-            probs     = CRPprobs(model,clusters,empty_cluster,x) # chinese restraunt process probabilities
+            probs     = CRPprobs(model.α,clusters,empty_cluster,x) # chinese restraunt process probabilities
             znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = place_x!(model,clusters,znew,x)
         end
     end
 end
 
+"""
+    `CRPprobs(clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real`
 
-function CRPprobs(model::AbstractDPModel{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
+Returns Chineese Restraunt Probabilities for a data point being any cluster + a new cluster
+"""
+function CRPprobs(α::V, clusters::Dict{Int, <:AbstractCluster}, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters)+1)
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds s = p[j] = c(x)
+        @inbounds s = p[j] = lognαpdf(c,x)
         max = s>max ? s : max
     end
-    @inbounds s = p[end] = cluster0(x)
+    @inbounds s = p[end] = lognαpdf(cluster0,x)
     max = s>max ? s : max
     pc = exp.(p .- max)
     return pc ./ sum(pc)
 end
 
-function place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)
+
+"""
+    `place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)`
+
+Place a data point to its new cluster. This modifies `clusters`
+"""
+function place_x!(model::AbstractDPModel,clusters::Dict{Int,<:AbstractCluster},knew::Int,xi::AbstractVector)
     cks = collect(keys(clusters))
     if knew > length(clusters)
         ck = maximum(cks)+1
@@ -73,12 +106,12 @@ function place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVe
     return ck
 end
 
-
+#Serial Quasi-Collapsed Gibbs Algorithm
 function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
-            probs     = CRPprobs(model,clusters,empty_cluster, view(X,:,i)) # chinese restraunt process probabilities
+            probs     = CRPprobs(model.α,clusters,empty_cluster, view(X,:,i)) # chinese restraunt process probabilities
             znew      = rand(GLOBAL_RNG,AliasTable(probs)) # new label
             labels[i] = label_x(clusters,znew)
         end
@@ -86,7 +119,13 @@ function quasi_collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empt
     end
 end
 
-function label_x(clusters::Dict,knew::Int)
+
+"""
+    `label_x(clusters::Dict,knew::Int)`
+
+Return new cluster number for a data point
+"""
+function label_x(clusters::Dict{Int,<:AbstractCluster},knew::Int)
     cks = collect(keys(clusters))
     if knew > length(clusters)
         return maximum(cks)+1
@@ -99,9 +138,10 @@ end
 #### Parallel
 ###
 
+#Parallel Quasi-Collapsed Gibbs Kernel
 function quasi_collapsed_parallel!(model, X, range, labels, clusters, empty_cluster)
     for i=1:size(X,2)
-        probs      = CRPprobs(model,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
+        probs      = CRPprobs(model.α, clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
         znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
         labels[range[i]]  = label_x(clusters,znew)
     end
@@ -111,6 +151,7 @@ end
 @inline quasi_collapsed_gibbs_parallel!(labels, clusters) =
     quasi_collapsed_parallel!(Main._model,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
+#Parallel Quasi-Collapsed Gibbs Algorithm
 function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
         record!(scene,labels,t)
@@ -124,22 +165,7 @@ function quasi_collapsed_gibbs_parallel!(model, X, labels, clusters, empty_clust
     end
 end
 
-
-function gather_stats(stats::Array{Dict{Int, <: Tuple},1})
-    gstats = empty(first(stats))
-    for s in stats
-        for (k,v) in s
-            if haskey(gstats,k)
-                gs = gstats[k]
-                gstats[k] = (gs[1]+v[1], gs[2]+v[2])
-            else
-                gstats[k] = (v[1], v[2])
-            end
-        end
-    end
-    return gstats
-end
-
+#Gathers parallely collected sufficient stats
 function gather_stats(stats::Array{Dict{Int,<: SufficientStats},1})
     gstats = empty(first(stats))
     for s in stats

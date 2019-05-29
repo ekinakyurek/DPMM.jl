@@ -1,24 +1,24 @@
 struct DirichletFast{T<:Real} <:  ContinuousMultivariateDistribution
-    alpha::Vector{T}
+    α::Vector{T}
 end
 
-DirichletFast(d::Integer, alpha::T) where {T<:Real} = DirichletFast{T}(d, alpha)
-DirichletFast(alpha::Vector{T}) where {T<:Integer} = DirichletFast{Float64}(convert(Vector{Float64},alpha))
-DirichletFast(d::Integer, alpha::Integer) = DirichletFast{Float64}(d, Float64(alpha))
+DirichletFast(d::Integer, α::T) where {T<:Real} = DirichletFast{T}(d, α)
+DirichletFast(α::Vector{T}) where {T<:Integer} = DirichletFast{Float64}(convert(Vector{Float64},α))
+DirichletFast(d::Integer, α::Integer) = DirichletFast{Float64}(d, Float64(α))
 
-convert(::Type{DirichletFast{T}}, alpha::Vector{S}) where {T<:Real, S<:Real} =
-    DirichletFast(convert(Vector{T}, alpha))
+convert(::Type{DirichletFast{T}}, α::Vector{S}) where {T<:Real, S<:Real} =
+    DirichletFast(convert(Vector{T}, α))
 convert(::Type{DirichletFast{T}}, d::DirichletFast{S}) where {T<:Real, S<:Real} =
-    DirichletFast(convert(Vector{T}, d.alpha))
+    DirichletFast(convert(Vector{T}, d.α))
 
-length(d::DirichletFast) = length(d.alpha)
-params(d::DirichletFast) = (d.alpha,)
+length(d::DirichletFast) = length(d.α)
+params(d::DirichletFast) = (d.α,)
 @inline partype(d::DirichletFast{T}) where {T<:Real} = T
 
 function _rand!(d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
     s = T(0)
     n = length(x)
-    α = d.alpha
+    α = d.α
     for i in 1:n
         @inbounds s += (x[i] = rand(Gamma(α[i])))
     end
@@ -28,7 +28,7 @@ end
 @inline rand(d::DirichletCanon) = _rand!(d,similar(d.alpha))
 
 function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
-    lgamma(sum(prior.alpha))-lgamma(sum(posterior.alpha)) + sum(lgamma.(posterior.alpha) .- lgamma.(prior.alpha))
+    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
 end
 
 ###
@@ -45,7 +45,7 @@ probs(d::MultinomialFast) = exp.(d.logp)
 params(d::MultinomialFast) = (d.logp,)
 @inline partype(d::MultinomialFast{T}) where {T<:Real} = T
 
-function logprob(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
+function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     logp = d.logp
     n    = sum(x)
     s = T(0)
@@ -56,4 +56,32 @@ function logprob(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
 end
 
 # FIXME: This is not good!
-@inline logprob(d::MultinomialFast, x::AbstractVector{T}) where T<:Real = dot(x, d.logp)
+@inline logαpdf(d::MultinomialFast, x::AbstractVector{T}) where T<:Real  = dot(x, d.logp)
+
+function _logpdf(d::MultinomialFast{T}, x::AbstractVector{T}) where T<:Real
+    n = sum(x)
+    logp = d.logp
+    S = partype(d)
+    s = S(lgamma(n + 1))
+    for i = 1:length(x)
+        @inbounds xi = x[i]
+        @inbounds p_i = logp[i]
+        s -= S(lgamma(S(xi) + 1))
+        s += xi * p_i
+    end
+    return s
+end
+
+function _logpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
+    n = sum(x)
+    logp = d.logp
+    S = partype(d)
+    s = S(lgamma(n + 1))
+    for (i,index) in enumerate(x.nzind)
+        @inbounds xi = x.nzval[i]
+        @inbounds p_i = logp[index]
+        s -= S(lgamma(S(xi) + 1))
+        s += xi * p_i
+    end
+    return s
+end

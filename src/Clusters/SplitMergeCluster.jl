@@ -1,3 +1,54 @@
+"""
+The SplitMergeCluster is designed for Split-Merge Gibbs algorithm.
+
+SplitMergeCluster is defined by:
+    `n` : population
+    `nr`: right subcluster population
+    `nl`: left subcluster population
+    `sampled` : sampled parameter distribution
+    `right` : right subcluster sampled parameter distribution
+    `left`: left subcluster sampled parameter
+    `post` : posterior distributions
+    `rightpost` : right subcluster posterior distributions
+    `leftpost` : left subcluster posterior distributions
+    'prior' : prior distribution
+    `llhs` : likelihoods assigned by cluster, right subcluster, leftsubcluster
+    `llh_hist` : right + left likelihood history over 4 iteration
+    'prior' : prior distribution
+
+
+A SplitMergeCluster are constructed via SufficientStats or data points:
+```julia
+    SplitMergeCluster(m::AbstractDPModel,X::AbstractArray)
+    SplitMergeCluster(m::AbstractDPModel,s::SufficientStats)
+```
+
+There are also specific methods defined for creating clusters for whole data:
+```julia
+    SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}})
+```
+
+There is also generic SuffStats method for getting sufficient stats for whole data:
+```julia
+SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
+```
+
+The `logαpdf` function are defined for geting log(∝likelihood) of a data point.
+This requires a `logαpdf` function for sampled distribution too.
+Last two functions are defined for subcluster likelihoods.
+```julia
+logαpdf(m::SplitMergeCluster,x)
+logαpdf(m::SplitMergeCluster,x,::Val{false}) # right subcluster likelihood
+logαpdf(m::SplitMergeCluster,x,::Val{true})  # left subcluster likelihood
+```
+
+The `lognαpdf` function calculates below
+```julia
+lognαpdf(m::SplitMergeCluster, x) = log(population(m)) + logαpdf(m,x)
+lognαpdf(m::SplitMergeCluster, x, ::Val{false})  = log(population(m,Val(false))) + logαpdf(m, x, Val(false))
+lognαpdf(m::SplitMergeCluster, x, ::Val{true})   = log(population(m,Val(true))) + logαpdf(m, x, Val(true))
+```
+"""
 struct SplitMergeCluster{Pred<:Distribution, Post<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int; nr::Int; nl::Int;
     s::SufficientStats;
@@ -5,12 +56,6 @@ struct SplitMergeCluster{Pred<:Distribution, Post<:Distribution, Prior<:Distribu
     post::Post; rightpost::Post; leftpost::Post;
     llhs::NTuple{3,Float64}; llh_hist::NTuple{4,Float64}; prior::Prior
 end
-
-@inline isempty(m::SplitMergeCluster) = m.n==0
-@inline is_right_empty(m::SplitMergeCluster) = m.nr==0
-@inline is_left_empty(m::SplitMergeCluster) = m.nl==0
-
-#@inline SplitMergeCluster(m::AbstractDPModel) = SplitMergeCluster(m, suffstats(m))
 
 function SplitMergeCluster(m::AbstractDPModel{<:Any,D},
                            s::SufficientStats,
@@ -24,6 +69,7 @@ function SplitMergeCluster(m::AbstractDPModel{<:Any,D},
                       ps, psr, psl, llhs, (-Inf,-Inf,-Inf,llhs[2]+llhs[3]), prior)
 end
 
+# This method is specifically designed for updating an existing cluster
 function SplitMergeCluster(c::SplitMergeCluster,
                            s::SufficientStats,
                            sr::SufficientStats,
@@ -36,10 +82,6 @@ function SplitMergeCluster(c::SplitMergeCluster,
                       llhs, (llh_hist[2:end]...,llhs[2]+llhs[3]), prior)
 end
 
-
-#@inline SplitMergeCluster(m::AbstractDPModel, new::Val{true}) = #uninitialized cluster
-#     SplitMergeCluster(floor(Int,m.α),0,0,rand(m.θprior),rand(m.θprior),rand(m.θprior),m.θprior)
-
 function SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
     uniquez   = unique((l[1] for l in z))
     Dict(map(uniquez) do k
@@ -49,7 +91,6 @@ function SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, z::Abstra
             (k,SplitMergeCluster(model,sr+sl,sr,sl))
         end)
 end
-
 
 function SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
     uniquez   = unique((l[1] for l in z))
@@ -61,13 +102,18 @@ function SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{
         end)
 end
 
-@inline logprob(m::SplitMergeCluster,x)      = logprob(m.sampled,x)
-@inline rightlogprob(m::SplitMergeCluster,x) = logprob(m.right,x)
-@inline leftlogprob(m::SplitMergeCluster,x)  = logprob(m.left,x)
-@inline (m::SplitMergeCluster)(x)            = log(m.n)  + logprob(m.sampled,x)
-@inline (m::SplitMergeCluster)(x, ::Val{1})  = log(m.nr) + logprob(m.rightx)
-@inline (m::SplitMergeCluster)(x, ::Val{2})  = log(m.nl) + logprob(m.left,x)
+@inline population(m::SplitMergeCluster) = m.n
+@inline population(m::SplitMergeCluster, ::Val{false}) = m.nr
+@inline population(m::SplitMergeCluster, ::Val{true}) = m.nl
 
+@inline logαpdf(m::SplitMergeCluster, x)      = logαpdf(m.sampled,x)
+@inline logαpdf(m::SplitMergeCluster, x, ::Val{false}) = logαpdf(m.right,x)
+@inline logαpdf(m::SplitMergeCluster, x, ::Val{true})  = logαpdf(m.left,x)
+
+@inline isempty(m::SplitMergeCluster, sub::Val) = population(m,side)==0
+@inline lognαpdf(m::SplitMergeCluster, x, sub::Val)  = log(population(m, sub)) + logαpdf(m, x, sub)
+
+# Specific `find` functions
 @inline get_cluster_inds(key::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
     findall(l->l[1]==key,labels)
 
@@ -80,5 +126,8 @@ end
 @inline get_right_inds(indices::Vector{Int}, labels::AbstractVector{Tuple{Int,Bool}}) =
     filter(i->!labels[i][2],indices)
 
+# Mapping random labels to (cluster, subcluster)
+# false -> right cluster
+# true  -> left cluster
 split_merge_labels(labels::AbstractVector{<:Integer}) =
     map(l->(l,rand()>0.5),labels)

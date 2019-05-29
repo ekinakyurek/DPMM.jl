@@ -34,7 +34,7 @@ include("Data/nytimes.jl"); export readNYTimes
 include("Data/visualize.jl"); export setup_scene
 include("Models/model.jl")
 include("Models/dpgmm.jl"); export DPGMM, DPGMMStats #, suffstats, updatestats, downdatestats, posterior, posterior_predictive
-include("Models/dpdmm.jl"); export DPDMM, DPDMMStats
+include("Models/dpmnmm.jl"); export DPMNMM, DPMNMMStats
 include("Clusters/CollapsedCluster.jl"); export CollapsedCluster, CollapsedClusters
 include("Clusters/DirectCluster.jl"); export DirectCluster, DirectClusters
 include("Clusters/SplitMergeCluster.jl"); export SplitMergeCluster, SplitMergeClusters
@@ -42,7 +42,25 @@ include("Algorithms/CollapsedGibbs.jl"); export  CollapsedAlgorithm
 include("Algorithms/DirectGibbs.jl"); export DirectAlgorithm
 include("Algorithms/SplitMerge.jl"); export SplitMergeAlgorithm
 
+"""
+ fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmark=false, scene=nothing, o...)
 
+`fit` is the main function of DPMM.jl which clusters given data matrix where columns are data points.
+
+The outputs is the labels for each data point.
+
+Default clustering algorithms is SplitMergeAlgorithm
+
+Keywords:
+
+* `ncpu=1` : the number of parallel workers.
+
+* `T=3000` : iteration count
+
+* `benchmarks=false` : if true returns elapsed time
+
+* `scene=nothing`: plot scene for visualization. see `setup_scene`
+"""
 function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmark=false, scene=nothing, o...)
     if ncpu>1
          setup_workers(ncpu)
