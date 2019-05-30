@@ -7,14 +7,21 @@ This repository is a research work on parallel dirichlet process mixture models 
 
 ## Getting Started
 
-Simple demo:
+Demo:
 ```julia
   gm = GridMixture(2)
   X, clabels = rand_with_label(gm,100000)
   fit(X; ncpu=3) # runs parallel split-merge algorithm
 ```
-For details please see the documentation:
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://ekinakyurek.github.io/DPMM.jl/latest)
+
+Visual Demo (requires OpenGL) :
+```julia
+  gm = GridMixture(2)
+  X, clabels = rand_with_label(gm,100000)
+  scene = setup_scene(X)
+  fit(X; ncpu=3, scene=scene) # visualize parallel split-merge algorithm
+```
+For details please see the [function documentation](https://ekinakyurek.github.io/DPMM.jl/latest)
 
 ## [Technical Report](./docs/main.tex)
 
@@ -51,3 +58,12 @@ Run below command:
 ```SHELL
 julia --project test/parallel_benchmark.jl  --N 1000000 --K 6 --Kinit 1 --ncpu 4
 ```
+
+* Results-I: Time (sec) to run 100 DP-GMM iterations for d=2, N=1e6, K=6.
+
+
+Code        |   ncpu=1  |   ncpu=2  | ncpu=4 | ncpu=8 |
+----------- | --------- | --------- | ------ | ------ |
+C++         | 76.94     |   40.57   |  22.23 | 13.01      
+DPMM.jl     | 103.90    |   53.11   |  26.45 | 16.42         
+Julia-BNP   | 1101.97   |   572.50  | 345.58 | 172.30  
