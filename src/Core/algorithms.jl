@@ -20,7 +20,7 @@ _default_model(::Type{<:AbstractFloat}) = DPGMM
 _default_model(::Type{<:Integer})       = DPMNMM
 
 """
-    run!(algo::DPMMAlgorithm, X, labels, clusters, emptycluster;o...)`
+    run!(algo::DPMMAlgorithm, X, labels, clusters, emptycluster;o...)
 
     Runs the specified Gibbs Algorithm
 """
@@ -42,7 +42,7 @@ end
 
 
 """
-    `initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}`
+    initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}
 Initialize clusters and labels, sends data to workers if algo is parallel
 """
 function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P

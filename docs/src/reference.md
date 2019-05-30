@@ -27,8 +27,7 @@ DPMM.SampleSubCluster
 DPMM.ClusterProbs
 DPMM.place_x!
 DPMM.label_x
-DPMM.mixture_πs
-DPMM.mixture_πsv2
+DPMM.logmixture_πs
 ```
 
 ## Clusters

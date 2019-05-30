@@ -1,6 +1,7 @@
 import Base: +,-, isempty
 """
-   AbstractCluster
+
+    AbstractCluster
 
    Abstract base class for clusters
 
@@ -21,7 +22,7 @@ const GenericClusters = Dict{Int, <:AbstractCluster}
 
 """
 
-CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
+    CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
 
 The CollapsedCluster is designed for Collapsed Gibbs algorithms.
 
@@ -54,7 +55,7 @@ There are also specific methods defined for creating clusters for whole data as 
     +(c::CollapsedCluster, x::AbstractVector)
 ```
 
-see AbstractCluster for generic functions for all Cluster types.
+see `AbstractCluster` for generic functions for all Cluster types.
 """
 struct CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int

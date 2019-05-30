@@ -4,26 +4,26 @@
 
 """
 
-  SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
+    SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  Run it by:
-  ```julia
-      labels = fit(X; algorithm = SplitMergeAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
-  ```
+Run it by:
+```julia
+  labels = fit(X; algorithm = SplitMergeAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+```
 
-  `P` stands for parallel, `Q` stands for quasi.
-  `M=false` algorithm doesn't do merge moves at all, so it is not exact
-   However, emprical results shows that merge moves very less likely.
-   The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
+`P` stands for parallel, `Q` stands for quasi.
+`M=false` algorithm doesn't do merge moves at all, so it is not exact
+However, emprical results shows that merge moves very less likely.
+The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Provides following methods:
-   - `SplitMergeAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
-   - `random_labels(X::AbstractMatrix, algo::SplitMergeAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix, algo::SplitMergeAlgorithm,labels) where P`
-   - `empty_cluster(algo::SplitMergeAlgorithm) where P : an empty cluster`
-   - `run!(algo::SplitMergeAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
+Provides following methods:
+- `SplitMergeAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+- `random_labels(X::AbstractMatrix, algo::SplitMergeAlgorithm) where P`
+- `create_clusters(X::AbstractMatrix, algo::SplitMergeAlgorithm,labels) where P`
+- `empty_cluster(algo::SplitMergeAlgorithm) where P : an empty cluster`
+- `run!(algo::SplitMergeAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
 
-   Other generic functions are implemented on top of these core functions.
+Other generic functions are implemented on top of these core functions.
 """
 struct SplitMergeAlgorithm{P, M} <: DPMMAlgorithm{P}
     model::AbstractDPModel
@@ -62,8 +62,7 @@ function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0;
         record!(scene,labels,t)
         logπs          = logmixture_πs(model.α,clusters)
         logsπs         = logsubcluster_πs(model.α/2,clusters)
-        maybe_split = maybeSplit(clusters)
-
+        maybe_split    = maybeSplit(clusters)
         @inbounds for i=1:size(X,2) # make parallel
             x = view(X,:,i)
             probs = RestrictedClusterProbs(logπs,clusters,x)
@@ -85,6 +84,7 @@ logsubcluster_πs(Δ::V, clusters::Dict{Int,<:SplitMergeCluster}) where V<:Real 
     Dict((k,log.(rand(DirichletCanon([V(population(c,Val(false)))+Δ,V(population(c,Val(true)))+Δ])))) for (k,c) in clusters)
 
 """
+
     RestrictedClusterProbs(πs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
 
 Returns normalized probability vector for a data point being any cluster
@@ -110,7 +110,7 @@ function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster})
 end
 
 """
-     `SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real`
+     SampleSubCluster(πs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
 
 Returns normalized probability vector for a data point being right or left subcluster
 """
@@ -120,7 +120,8 @@ Returns normalized probability vector for a data point being right or left subcl
     if p1>p2
         return rand(GLOBAL_RNG) > (1/(1+exp(p2-p1)))
     else
-        return rand(GLOBAL_RNG) > (p1/(p1+1))
+        p = exp(p1-p2)
+        return rand(GLOBAL_RNG) > (p/(p+1))
     end
 end
 
@@ -305,8 +306,13 @@ end
 
 function update_clusters!(m::AbstractDPModel, clusters::Dict, stats::Dict{Int,<:Tuple})
     for (k,c) in clusters
-        sr, sl = stats[k]
-        clusters[k] = SplitMergeCluster(c, sr + sl, sr, sl; llh_hist=c.llh_hist)
+        if haskey(stats,k)
+            sr, sl = stats[k]
+            clusters[k] = SplitMergeCluster(c, sr + sl, sr, sl; llh_hist=c.llh_hist)
+        else
+            s = suffstats(m)
+            clusters[k] = SplitMergeCluster(c, s, s, s; llh_hist=c.llh_hist)
+        end
     end
     return clusters
 end

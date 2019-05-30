@@ -1,4 +1,5 @@
 """
+
     setup_scene(X)
 
     Initialize plots for visualizing 2D data

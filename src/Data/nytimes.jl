@@ -1,4 +1,5 @@
 """
+
     readNYTimes(file::AbstractString)
 
     Read NYTimes dataset from given data file. It returns DPSparseMatrix

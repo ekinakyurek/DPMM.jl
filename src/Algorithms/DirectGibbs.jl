@@ -3,27 +3,28 @@
 ###
 
 """
-  DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  Run it by:
-  ```julia
-      labels = fit(X; algorithm = DirectAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
-  ```
+    DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  `P` stands for parallel, `Q` stands for quasi.
-  Quasi algorithm uses cluster population proportions as cluster weights.
-  So, it doesn't sample mixture weights from Dirichlet distribution.
-  In large `N`, this is very similar to non-quasi sampler.
-  The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
+Run it by:
+```julia
+  labels = fit(X; algorithm = DirectAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+```
 
-   Provides following methods:
-   - `DirectAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
-   - `random_labels(X::AbstractMatrix, algo::DirectAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix, algo::DirectAlgorithm,labels) where P`
-   - `empty_cluster(algo::DirectAlgorithm) where P : an empty cluster`
-   - `run!(algo::DirectAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
+`P` stands for parallel, `Q` stands for quasi.
+Quasi algorithm uses cluster population proportions as cluster weights.
+So, it doesn't sample mixture weights from Dirichlet distribution.
+In large `N`, this is very similar to non-quasi sampler.
+The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Other generic functions are implemented on top of these core functions.
+Provides following methods:
+- `DirectAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+- `random_labels(X::AbstractMatrix, algo::DirectAlgorithm) where P`
+- `create_clusters(X::AbstractMatrix, algo::DirectAlgorithm,labels) where P`
+- `empty_cluster(algo::DirectAlgorithm) where P : an empty cluster`
+- `run!(algo::DirectAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
+
+Other generic functions are implemented on top of these core functions.
 """
 struct DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}
     model::AbstractDPModel
@@ -73,7 +74,8 @@ function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster
 end
 
 """
-logmixture_πs(α::V, clusters::Dict{<:Integer, <:AbstractCluster}) where V<:Real
+
+    logmixture_πs(α::V, clusters::Dict{<:Integer, <:AbstractCluster}) where V<:Real
 
 Sample log mixture weights from Dirichlet Distribution.
 """
@@ -82,7 +84,8 @@ function logmixture_πs(α::V, clusters::Dict{<:Integer, <:AbstractCluster}) whe
 end
 
 """
-    `ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real`
+
+    ClusterProbs(πs::AbstractVector{V}, clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
 
 Returns normalized probability vector for a data point being any cluster + a new cluster
 """

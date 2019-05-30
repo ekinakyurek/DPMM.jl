@@ -3,26 +3,27 @@
 ###
 
 """
-  CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  Run it by:
-  ```julia
-      labels = fit(X; algorithm = CollapsedAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
-  ```
+    CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  `P` stands for parallel, `Q` stands for quasi.
-  Quasi algorithm updates the clusters only in the end of each iteration.
-  Parallel algorithm is valid for quasi-collapsed algorithm only.
-  The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
+Run it by:
+```julia
+  labels = fit(X; algorithm = CollapsedAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+```
 
-   Provides following methods:
-   - `CollapsedAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
-   - `random_labels(X::AbstractMatrix, algo::CollapsedAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix, algo::CollapsedAlgorithm,labels) where P`
-   - `empty_cluster(algo::CollapsedAlgorithm) where P : an empty cluster`
-   - `run!(algo::CollapsedAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
+`P` stands for parallel, `Q` stands for quasi.
+Quasi algorithm updates the clusters only in the end of each iteration.
+Parallel algorithm is valid for quasi-collapsed algorithm only.
+The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Other generic functions are implemented on top of these core functions.
+Provides following methods:
+- `CollapsedAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+- `random_labels(X::AbstractMatrix, algo::CollapsedAlgorithm) where P`
+- `create_clusters(X::AbstractMatrix, algo::CollapsedAlgorithm,labels) where P`
+- `empty_cluster(algo::CollapsedAlgorithm) where P : an empty cluster`
+- `run!(algo::CollapsedAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
+
+Other generic functions are implemented on top of these core functions.
 """
 struct CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
     model::AbstractDPModel
@@ -71,7 +72,8 @@ function collapsed_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_clus
 end
 
 """
-    `CRPprobs(clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real`
+
+    CRPprobs(clusters::Dict, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
 
 Returns Chineese Restraunt Probabilities for a data point being any cluster + a new cluster
 """
@@ -90,9 +92,10 @@ end
 
 
 """
-    `place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)`
 
-Place a data point to its new cluster. This modifies `clusters`
+    place_x!(model::AbstractDPModel,clusters::Dict,knew::Int,xi::AbstractVector)
+
+    Place a data point to its new cluster. This modifies `clusters`
 """
 function place_x!(model::AbstractDPModel,clusters::Dict{Int,<:AbstractCluster},knew::Int,xi::AbstractVector)
     cks = collect(keys(clusters))
@@ -121,9 +124,10 @@ end
 
 
 """
-    `label_x(clusters::Dict,knew::Int)`
 
-Return new cluster number for a data point
+    label_x(clusters::Dict,knew::Int)
+
+    Return new cluster number for a data point
 """
 function label_x(clusters::Dict{Int,<:AbstractCluster},knew::Int)
     cks = collect(keys(clusters))
