@@ -3,12 +3,12 @@
 ###
 
 """
-
     SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
+
 
 Run it by:
 ```julia
-  labels = fit(X; algorithm = SplitMergeAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+labels = fit(X; algorithm = SplitMergeAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
 ```
 
 `P` stands for parallel, `Q` stands for quasi.

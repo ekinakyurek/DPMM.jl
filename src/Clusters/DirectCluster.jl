@@ -1,33 +1,32 @@
 """
-
     DirectCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
 
-    The DirectCluster is designed for Direct Gibbs algorithms.
+The DirectCluster is designed for Direct Gibbs algorithms.
 
-    DirectCluster has below fields:
-        `n` : population
-        `sampled` : sampled parameter distribution
-        'prior' : prior distribution
+DirectCluster has below fields:
+    `n` : population
+    `sampled` : sampled parameter distribution
+    'prior' : prior distribution
 
-    A DirectCluster are constructed via SufficientStats or data points:
-    ```julia
-        DirectCluster(m::AbstractDPModel,X::AbstractArray) # X is the data as columns
-        DirectCluster(m::AbstractDPModel,s::SufficientStats)
-    ```
+A DirectCluster are constructed via SufficientStats or data points:
+```julia
+DirectCluster(m::AbstractDPModel,X::AbstractArray) # X is the data as columns
+DirectCluster(m::AbstractDPModel,s::SufficientStats)
+```
 
-    There is also generic(not specific to DirectCluster) SuffStats method for
-    getting sufficient stats for whole data data as a dictionary
-    ```julia
-        SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
-    ```
+There is also generic(not specific to DirectCluster) SuffStats method for
+getting sufficient stats for whole data data as a dictionary
+```julia
+SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
+```
 
-    There are also specific methods defined for creating clusters for whole data as a dictionary:
-    ```julia
-        DirectClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{Int})
-        DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
-    ```
-    
-    see `AbstractCluster` for generic functions for all Cluster types.
+There are also specific methods defined for creating clusters for whole data as a dictionary:
+```julia
+DirectClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{Int})
+DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
+```
+
+see `AbstractCluster` for generic functions for all Cluster types.
 """
 struct DirectCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int
