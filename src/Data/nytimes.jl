@@ -1,4 +1,10 @@
-function readNYTimes(file, entry::Int=69679427)
+"""
+
+    readNYTimes(file::AbstractString)
+
+    Read NYTimes dataset from given data file. It returns DPSparseMatrix
+"""
+function readNYTimes(file::AbstractString, entry::Int=69679427)
     J=Array{Int}(undef,entry);
     Ir= Array{Int}(undef,entry);
     V = Array{Int}(undef,entry);

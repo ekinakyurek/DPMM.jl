@@ -38,9 +38,11 @@ mvnormal_c0(d::MvNormalFast) = d.c0
 sqmahal(d::MvNormalFast, x::AbstractVector) = quad(d.J, broadcast(-, x, d.μ))
 sqmahal!(r::AbstractVector, d::MvNormalFast, x::AbstractMatrix) = quad!(r, d.J, broadcast(-, x, d.μ))
 
-@inline logprob(d::GenericMvTDist{T}, x::AbstractVector{T}) where T = _logpdf(d,x)
+@inline logαpdf(d::GenericMvTDist{T}, x::AbstractVector{T}) where T = _logpdf(d,x)
 
-function logprob(d::MvNormalFast{T}, x::AbstractVector{T}) where T
+@inline _logpdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T   = logαpdf(d,x)
+
+function logαpdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T
     D = length(x)
     μ = d.μ
     J = d.J.mat
@@ -56,6 +58,7 @@ function logprob(d::MvNormalFast{T}, x::AbstractVector{T}) where T
             @inbounds s += y[i] * y[j] * J[i, j]
         end
     end
+
     return d.c0 - s/T(2)
 end
 ####
