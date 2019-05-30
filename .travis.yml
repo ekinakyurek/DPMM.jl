@@ -15,6 +15,7 @@ notifications:
 #   - julia -e 'using Pkg; Pkg.add("Documenter"); using KnetLayers, Documenter; cd(KnetLayers.dir("docs")); include("make.jl")'
 allow_failures:
   - 1.0
-  
+  - nightly
+
 after_success:
   - julia -e 'using Pkg; Pkg.add("Documenter"); using DPMM, Documenter; cd(KnetLayers.dir("docs")); include("make.jl")'
