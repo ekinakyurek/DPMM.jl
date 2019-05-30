@@ -4,7 +4,7 @@ makedocs(
 
     modules = [DPMM],
     clean = false,              # do we clean build dir
-    format = :html,
+    format = Documenter.HTML(),
     sitename = "DPMM.jl",
     authors = "Ekin Akyürek",
     doctest = true,
@@ -20,10 +20,10 @@ makedocs(
 
 deploydocs(
     repo = "github.com/ekinakyurek/DPMM.jl.git",
-    julia = "1.0",
-    osname = "linux",
+    # julia = "1.0",
+    # osname = "linux",
     target = "build",
-    make = nothing,
-    deps = nothing,
+    # make = nothing,
+    # deps = nothing,
     #deps   = Deps.pip("mkdocs", "python-markdown-math"),
 )
