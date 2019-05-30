@@ -1,4 +1,6 @@
 """
+    DPMMAlgorithm{P}
+
    Abstract base class for algorithms
 
   `P` stands for parallel.
@@ -18,15 +20,16 @@ _default_model(::Type{<:AbstractFloat}) = DPGMM
 _default_model(::Type{<:Integer})       = DPMNMM
 
 """
-`run!(algo::DPMMAlgorithm, X, labels, clusters, emptycluster;o...)``
+    run!(algo::DPMMAlgorithm, X, labels, clusters, emptycluster;o...)`
 
-Runs the specified Gibbs Algorithm
+    Runs the specified Gibbs Algorithm
 """
 run!(algo::DPMMAlgorithm,X,args...;o...)
 
 """
-`setup_workers(ncpu::Integer)`
-Setup parallel process, initialize required modules
+    setup_workers(ncpu::Integer)
+
+    Setup parallel process, initialize required modules
 """
 function setup_workers(ncpu::Integer)
     if nworkers() != ncpu

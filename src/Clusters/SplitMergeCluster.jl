@@ -1,53 +1,50 @@
 """
-The SplitMergeCluster is designed for Split-Merge Gibbs algorithm.
 
-SplitMergeCluster is defined by:
-    `n` : population
-    `nr`: right subcluster population
-    `nl`: left subcluster population
-    `sampled` : sampled parameter distribution
-    `right` : right subcluster sampled parameter distribution
-    `left`: left subcluster sampled parameter
-    `post` : posterior distributions
-    `rightpost` : right subcluster posterior distributions
-    `leftpost` : left subcluster posterior distributions
-    'prior' : prior distribution
-    `llhs` : likelihoods assigned by cluster, right subcluster, leftsubcluster
-    `llh_hist` : right + left likelihood history over 4 iteration
-    'prior' : prior distribution
+    SplitMergeCluster{Pred<:Distribution, Post<:Distribution, Prior<:Distribution} <: AbstractCluster
 
 
-A SplitMergeCluster are constructed via SufficientStats or data points:
-```julia
-    SplitMergeCluster(m::AbstractDPModel,X::AbstractArray)
-    SplitMergeCluster(m::AbstractDPModel,s::SufficientStats)
-```
+    The SplitMergeCluster is designed for Split-Merge Gibbs algorithm.
 
-There are also specific methods defined for creating clusters for whole data:
-```julia
-    SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}})
-```
+    SplitMergeCluster has below fields:
+        - `n` : population
+        - `nr`: right subcluster population
+        - `nl`: left subcluster population
+        - `sampled` : sampled parameter distribution
+        - `right` : right subcluster sampled parameter distribution
+        - `left`: left subcluster sampled parameter
+        - `post` : posterior distributions
+        - `rightpost` : right subcluster posterior distributions
+        - `leftpost` : left subcluster posterior distributions
+        - 'prior' : prior distribution
+        - `llhs` : log marginal likelihoods assigned by cluster, right subcluster, leftsubcluster
+        - `llh_hist` : right + left log marginal likelihood history over 4 iteration
+        - 'prior' : prior distribution
 
-There is also generic SuffStats method for getting sufficient stats for whole data:
-```julia
-SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
-```
+    A SplitMergeCluster are constructed via SufficientStats or data points:
+    ```julia
+        SplitMergeCluster(m::AbstractDPModel,X::AbstractArray) # X is the data as columns
+        SplitMergeCluster(m::AbstractDPModel,s::SufficientStats)
+    ```
 
-The `logαpdf` function are defined for geting log(∝likelihood) of a data point.
-This requires a `logαpdf` function for sampled distribution too.
-Last two functions are defined for subcluster likelihoods.
-```julia
-logαpdf(m::SplitMergeCluster,x)
-logαpdf(m::SplitMergeCluster,x,::Val{false}) # right subcluster likelihood
-logαpdf(m::SplitMergeCluster,x,::Val{true})  # left subcluster likelihood
-```
+    There is also generic SuffStats method for getting sufficient stats for whole data:
+    ```julia
+    SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
+    ```
 
-The `lognαpdf` function calculates below
-```julia
-lognαpdf(m::SplitMergeCluster, x) = log(population(m)) + logαpdf(m,x)
-lognαpdf(m::SplitMergeCluster, x, ::Val{false})  = log(population(m,Val(false))) + logαpdf(m, x, Val(false))
-lognαpdf(m::SplitMergeCluster, x, ::Val{true})   = log(population(m,Val(true))) + logαpdf(m, x, Val(true))
-```
+    There are also specific methods defined for creating clusters for whole data:
+    ```julia
+        SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}})
+    ```
+
+    see `AbstractCluster` for generic functions for all Cluster types.
+
+    The `logαpdf` and `lognαpdf` generic functions are extended for subcluster likelihoods.
+    ```julia
+    logαpdf(m::SplitMergeCluster,x,::Val{false}) # right subcluster likelihood
+    logαpdf(m::SplitMergeCluster,x,::Val{true})  # left subcluster likelihood
+    lognαpdf(m::SplitMergeCluster, x, ::Val{false})  = log(population(m,Val(false))) + logαpdf(m, x, Val(false))
+    lognαpdf(m::SplitMergeCluster, x, ::Val{true})   = log(population(m,Val(true))) + logαpdf(m, x, Val(true))
+    ```
 """
 struct SplitMergeCluster{Pred<:Distribution, Post<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int; nr::Int; nl::Int;

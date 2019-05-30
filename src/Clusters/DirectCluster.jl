@@ -1,39 +1,33 @@
 """
-The DirectCluster is designed for Direct Gibbs algorithms.
 
-DirectCluster is defined by:
-    `n` : population
-    `sampled` : sampled parameter distribution
-    'prior' : prior distribution
+    DirectCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
 
-A DirectCluster are constructed via SufficientStats or data points:
-```julia
-    DirectCluster(m::AbstractDPModel,X::AbstractArray)
-    DirectCluster(m::AbstractDPModel,s::SufficientStats)
-```
+    The DirectCluster is designed for Direct Gibbs algorithms.
 
-There are also specific methods defined for creating clusters for whole data:
-```julia
-    DirectClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{Int})
-    DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
-```
+    DirectCluster has below fields:
+        `n` : population
+        `sampled` : sampled parameter distribution
+        'prior' : prior distribution
 
-There is also generic(not specific to DirectCluster) SuffStats method for
-getting sufficient stats for whole data
-```julia
-    SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
-```
+    A DirectCluster are constructed via SufficientStats or data points:
+    ```julia
+        DirectCluster(m::AbstractDPModel,X::AbstractArray) # X is the data as columns
+        DirectCluster(m::AbstractDPModel,s::SufficientStats)
+    ```
 
-The `logαpdf` function are defined for geting log(∝likelihood) of a data point.
-This requires a `logαpdf` function for sampled distribution too.
-```julia
-logαpdf(m::DirectCluster,x)
-```
+    There is also generic(not specific to DirectCluster) SuffStats method for
+    getting sufficient stats for whole data data as a dictionary
+    ```julia
+        SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
+    ```
 
-Clusters are callable objects and call to a cluster returns below:
-```julia
-(m::DirectCluster)(x) = log(m.n) + logαpdf(m.sampled,x)
-```
+    There are also specific methods defined for creating clusters for whole data as a dictionary:
+    ```julia
+        DirectClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{Int})
+        DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
+    ```
+    
+    see `AbstractCluster` for generic functions for all Cluster types.
 """
 struct DirectCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int

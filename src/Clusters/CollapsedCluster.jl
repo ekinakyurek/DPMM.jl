@@ -1,15 +1,18 @@
 import Base: +,-, isempty
 """
+   AbstractCluster
+
    Abstract base class for clusters
 
    Each subtype should provide the following methods:
-   - `population(c)` : population of the cluster
-   - `logαpdf(c,x)`  : log(∝likelihood) of data
-   - `(c::ClusterType)(x)=log(c.n) + logαpdf(c,x)`
-   - `ClusterType(m::AbstractDPModel,X::AbstractArray)`: constructor
+   - `population(c)`: population of the cluster
+   - `isempty(m::AbstractCluster)`: checks whether the cluster is empty?
+   - `logαpdf(c,x)` : log(∝likelihood) of a data point
+   - `lognαpdf(c,x)`: log(population) + logαpdf(c,x) for a data point (used in CRP calculations)
+   - `ClusterType(m::AbstractDPModel,X::AbstractArray)`  : constructor (X is the data as columns)
    - `ClusterType(m::AbstractDPModel,s::SufficientStats)`: constructor
 
-   Other generic functions is implemented on top of these core functions.
+   Other generic functions are implemented on top of these core functions.
 """
 abstract type AbstractCluster end
 const GenericClusters = Dict{Int, <:AbstractCluster}
@@ -17,47 +20,41 @@ const GenericClusters = Dict{Int, <:AbstractCluster}
 @inline lognαpdf(m::AbstractCluster,x) = log(population(m)) + logαpdf(m,x)
 
 """
+
+CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
+
 The CollapsedCluster is designed for Collapsed Gibbs algorithms.
 
-CollapsedCluster is defined by:
-    `n` : population
-    `predictive` : predictive distribution
-    'prior' : prior distribution
+CollapsedCluster has below fields:
+    - `n` : population
+    - `predictive` : predictive distribution
+    - `prior` : prior distribution
 
 A CollapsedCluster are constructed via SufficientStats or data points:
 ```julia
-    CollapsedCluster(m::AbstractDPModel,X::AbstractArray)
-    CollapsedCluster(m::AbstractDPModel,s::SufficientStats)
+    CollapsedCluster(m::AbstractDPModel, X::AbstractArray) # X is the data as columns
+    CollapsedCluster(m::AbstractDPModel, s::SufficientStats)
 ```
 
-There are also specific methods defined for creating clusters for whole data:
+There is also generic(not specific to CollapsedCluster) SuffStats method for
+getting suffstats for whole data as a dictionary:
+```julia
+    SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
+```
+
+There are also specific methods defined for creating clusters for whole data as a dictionary:
 ```julia
     CollapsedClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{Int})
     CollapsedClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
 ```
 
-There is also generic(not specific to CollapsedCluster) SuffStats method for
-getting suffstats for whole data
+`-` and `+` operations are defined for data addition and data removal from the cluster:
 ```julia
-    SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractArray{Int})
+    -(c::CollapsedCluster, x::AbstractVector)
+    +(c::CollapsedCluster, x::AbstractVector)
 ```
 
-`-` and `+` operations are defined for data addition and removal:
-```julia
-    -(c::CollapsedCluster{V,P},x::AbstractVector)
-    +(c::CollapsedCluster{V,P},x::AbstractVector)
-```
-
-The `logαpdf` function are defined for geting log(∝likelihood) of a data point.
-This requires a `logαpdf` function for predictive distribution too.
-```julia
-logαpdf(m::CollapsedCluster,x)
-```
-
-Clusters are callable objects and call to a cluster returns below:
-```julia
-(m::CollapsedCluster)(x) = log(m.n) + logαpdf(m.predictive,x)
-```
+see AbstractCluster for generic functions for all Cluster types.
 """
 struct CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int

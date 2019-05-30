@@ -3,26 +3,26 @@
 ###
 
 """
-  `CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}`
+  CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  Test it via:
+  Run it by:
   ```julia
-      labels = fit(X; algorithm = CollapsedAlgorithm)
-   ```
+      labels = fit(X; algorithm = CollapsedAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+  ```
 
-  `P` stands for parallel, Q stands for quasi.
+  `P` stands for parallel, `Q` stands for quasi.
   Quasi algorithm updates the clusters only in the end of each iteration.
-  Parallel algorithm is only valid for quasi-collapsed algorithm,
-  number of workers can passed by `ncpu` keyword argument to `run!` function
+  Parallel algorithm is valid for quasi-collapsed algorithm only.
+  The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Provides following methods
-   - `CollapsedAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α::Real=1, ninit::Int=1, parallel::Bool=false, quasi::Bool=false, o...)``
-   - `random_labels(X::AbstractMatrix,algo::CollapsedAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix,algo::CollapsedAlgorithm,labels) where P`
+   Provides following methods:
+   - `CollapsedAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+   - `random_labels(X::AbstractMatrix, algo::CollapsedAlgorithm) where P`
+   - `create_clusters(X::AbstractMatrix, algo::CollapsedAlgorithm,labels) where P`
    - `empty_cluster(algo::CollapsedAlgorithm) where P : an empty cluster`
-   - `run!(algo::CollapsedAlgorithm{P,Q}, X, labels, clusters, emptycluster; o...) where {P,Q}`
+   - `run!(algo::CollapsedAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
 
-   Other generic functions is implemented on top of these core functions.
+   Other generic functions are implemented on top of these core functions.
 """
 struct CollapsedAlgorithm{P,Q} <: DPMMAlgorithm{P}
     model::AbstractDPModel

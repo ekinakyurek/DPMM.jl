@@ -43,23 +43,25 @@ include("Algorithms/DirectGibbs.jl"); export DirectAlgorithm
 include("Algorithms/SplitMerge.jl"); export SplitMergeAlgorithm
 
 """
- fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmark=false, scene=nothing, o...)
+    fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmark=false, scene=nothing, o...)
 
-`fit` is the main function of DPMM.jl which clusters given data matrix where columns are data points.
+    `fit` is the main function of DPMM.jl which clusters given data matrix where columns are data points.
 
-The outputs is the labels for each data point.
+    The output is the labels for each data point.
 
-Default clustering algorithms is SplitMergeAlgorithm
+    Default clustering algorithm is `SplitMergeAlgorithm`
 
-Keywords:
+    Keywords:
 
-* `ncpu=1` : the number of parallel workers.
+    - `ncpu=1` : the number of parallel workers.
 
-* `T=3000` : iteration count
+    - `T=3000` : iteration count
 
-* `benchmarks=false` : if true returns elapsed time
+    - `benchmarks=false` : if true returns elapsed time
 
-* `scene=nothing`: plot scene for visualization. see `setup_scene`
+    - `scene=nothing`: plot scene for visualization. see `setup_scene`
+
+    - o... : other keyword argument specific to `algorithm`
 """
 function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmark=false, scene=nothing, o...)
     if ncpu>1

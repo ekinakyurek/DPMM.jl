@@ -3,26 +3,27 @@
 ###
 
 """
-  `DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}`
+  DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
-  Test it via:
+  Run it by:
   ```julia
-      labels = fit(X; algorithm = DirectAlgorithm)
-   ```
+      labels = fit(X; algorithm = DirectAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
+  ```
 
-   `P` stands for parallel, Q stands for quasi.
-   Quasi algorithm uses cluster population proportions as cluster weights.
-   It doesn't sample from dirichlet distribution.
-   number of workers in parallel algorithm can passed by `ncpu` keyword argument to `run!` function
+  `P` stands for parallel, `Q` stands for quasi.
+  Quasi algorithm uses cluster population proportions as cluster weights.
+  So, it doesn't sample mixture weights from Dirichlet distribution.
+  In large `N`, this is very similar to non-quasi sampler.
+  The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Provides following methods
-   - `DirectAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α::Real=1, ninit::Int=1, parallel::Bool=false, quasi::Bool=false, o...)``
-   - `random_labels(X::AbstractMatrix,algo::DirectAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix,algo::DirectAlgorithm,labels) where P`
+   Provides following methods:
+   - `DirectAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+   - `random_labels(X::AbstractMatrix, algo::DirectAlgorithm) where P`
+   - `create_clusters(X::AbstractMatrix, algo::DirectAlgorithm,labels) where P`
    - `empty_cluster(algo::DirectAlgorithm) where P : an empty cluster`
-   - `run!(algo::DirectAlgorithm{P,Q}, X, labels, clusters, emptycluster;o...) where {P,Q}`
+   - `run!(algo::DirectAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
 
-   Other generic functions is implemented on top of these core functions.
+   Other generic functions are implemented on top of these core functions.
 """
 struct DirectAlgorithm{P,Q} <: DPMMAlgorithm{P}
     model::AbstractDPModel

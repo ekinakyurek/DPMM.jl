@@ -1,6 +1,7 @@
 """
-   `DPGMM{T<:Real,D} <: AbstractDPModel{T,D}`
-    Class for DP Gaussian Mixture Models
+   DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
+   
+   Class for DP Gaussian Mixture Models
 """
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalInverseWishart{T}
@@ -24,7 +25,8 @@ end
 
 
 """
-   `DPGMMStats{T<:Real} <: SufficientStats`
+    DPGMMStats{T<:Real} <: SufficientStats
+
     Sufficient statistics for Gaussian Models
 """
 struct DPGMMStats{T<:Real} <: SufficientStats

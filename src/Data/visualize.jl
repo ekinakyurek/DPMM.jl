@@ -1,7 +1,7 @@
 """
-    `setup_scene(X)`
+    setup_scene(X)
 
-Initialize plots for visualizing 2D data
+    Initialize plots for visualizing 2D data
 """
 function setup_scene(X)
     if !isdefined(Main,:scene)

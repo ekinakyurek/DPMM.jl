@@ -3,25 +3,27 @@
 ###
 
 """
-  `SplitMergeAlgorithm{P,M} <: DPMMAlgorithm{P}`
 
-  Test it via:
+  SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
+
+  Run it by:
   ```julia
-      labels = fit(X; algorithm = SplitMergeAlgorithm)
+      labels = fit(X; algorithm = SplitMergeAlgorithm, quasi=false, ncpu=1, T=1000, keywords...)
   ```
 
-  `P` stands for parallel, M stands for merge
+  `P` stands for parallel, `Q` stands for quasi.
   `M=false` algorithm doesn't do merge moves at all, so it is not exact
-   The number of workers in parallel algorithm can passed by `ncpu` keyword argument to `run!` function
+   However, emprical results shows that merge moves very less likely.
+   The number of workers can passed by `ncpu` keyword argument to `fit` or `run!` functions
 
-   Provides following methods
-   - `SplitMergeAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α::Real=1, ninit::Int=1, parallel::Bool=false, merge::Bool=false, o...)`
-   - `random_labels(X::AbstractMatrix,algo::SplitMergeAlgorithm) where P`
-   - `create_clusters(X::AbstractMatrix,algo::SplitMergeAlgorithm,labels) where P`
-   - `empty_cluster(algo::SplitMergeAlgorithm) where P` : returns nothing because it is not needed
-   - `run!(algo::SplitMergeAlgorithm{P,M}, X, labels, clusters, emptycluster;o...) where {P,M}`
+   Provides following methods:
+   - `SplitMergeAlgorithm(X::AbstractMatrix{T}; modelType=_default_model(T), α=1, ninit=1, parallel=false, quasi=false, o...)`
+   - `random_labels(X::AbstractMatrix, algo::SplitMergeAlgorithm) where P`
+   - `create_clusters(X::AbstractMatrix, algo::SplitMergeAlgorithm,labels) where P`
+   - `empty_cluster(algo::SplitMergeAlgorithm) where P : an empty cluster`
+   - `run!(algo::SplitMergeAlgorithm{P,Q}, X, labels, clusters, cluster0; o...) where {P,Q}`
 
-   Other generic functions is implemented on top of these core functions.
+   Other generic functions are implemented on top of these core functions.
 """
 struct SplitMergeAlgorithm{P, M} <: DPMMAlgorithm{P}
     model::AbstractDPModel
@@ -91,7 +93,7 @@ function RestrictedClusterProbs(logπs::AbstractVector{V}, clusters::Dict,  x::A
     p = Array{V,1}(undef,length(clusters))
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
-        @inbounds s = p[j] = logπs[j]  + logαpdf(c,x)
+        @inbounds s = p[j] = logπs[j] + logαpdf(c,x)
         max = s>max ? s : max
     end
     pc = exp.(p .- max)
@@ -264,7 +266,7 @@ function split_cluster!(model::AbstractDPModel{V,D}, X::AbstractMatrix,
     end
 end
 
-function split_indices!(kold::Int, knew::Int,labels::AbstractVector{Tuple{Int,Bool}})
+function split_indices!(kold::Int, knew::Int, labels::AbstractVector{Tuple{Int,Bool}})
     indices = get_cluster_inds(kold, labels)
     @inbounds for i in indices
         if labels[i][2]
@@ -288,12 +290,12 @@ end
 #### Parallel
 ###
 
-function splitmerge_parallel!(πs, sπs, X, range, labels, clusters)
+function splitmerge_parallel!(logπs, logsπs, X, range, labels, clusters)
     for i=1:size(X,2)
         x = view(X,:,i)
-        probs = RestrictedClusterProbs(πs,clusters,x)
+        probs = RestrictedClusterProbs(logπs,clusters,x)
         z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
-        labels[range[i]] = (z,SampleSubCluster(sπs[z],clusters[z],x))
+        labels[range[i]] = (z,SampleSubCluster(logsπs[z],clusters[z],x))
     end
     return SuffStats(Main._model, X, convert(Array,labels[range]))
 end
@@ -303,8 +305,8 @@ end
 
 function update_clusters!(m::AbstractDPModel, clusters::Dict, stats::Dict{Int,<:Tuple})
     for (k,c) in clusters
-        stat = stats[k]
-        clusters[k] = SplitMergeCluster(c, stat[1]+stat[2], stat[1], stat[2]; llh_hist=c.llh_hist)
+        sr, sl = stats[k]
+        clusters[k] = SplitMergeCluster(c, sr + sl, sr, sl; llh_hist=c.llh_hist)
     end
     return clusters
 end
@@ -312,13 +314,13 @@ end
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
-        πs          = logmixture_πs(model.α,clusters)
-        sπs         = logsubcluster_πs(model.α/2,clusters)
+        logπs          = logmixture_πs(model.α,clusters)
+        logsπs         = logsubcluster_πs(model.α/2,clusters)
         maybe_split = maybeSplit(clusters)
         stats = Dict{Int,Tuple{<:SufficientStats, <:SufficientStats}}[]
         @sync begin
             for p in procs(labels)
-                @async push!(stats,remotecall_fetch(splitmerge_parallel!,p,labels,clusters,πs,sπs))
+                @async push!(stats,remotecall_fetch(splitmerge_parallel!,p,labels,clusters,logπs,logsπs))
             end
         end
         update_clusters!(model, clusters, gather_stats(stats))
