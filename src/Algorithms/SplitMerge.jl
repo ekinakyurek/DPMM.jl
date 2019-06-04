@@ -57,7 +57,8 @@ const DEFAULT_ALGO = SplitMergeAlgorithm
 ###
 #### Serial
 ###
-function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters, cluster0; merge=true, T=10, scene=nothing)
+function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericClusters,
+                            cluster0; merge::Bool=true, T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
         logπs          = logmixture_πs(model.α,clusters)
@@ -89,7 +90,8 @@ logsubcluster_πs(Δ::V, clusters::Dict{Int,<:SplitMergeCluster}) where V<:Real 
 
 Returns normalized probability vector for a data point being any cluster
 """
-function RestrictedClusterProbs(logπs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
+function RestrictedClusterProbs(logπs::AbstractVector{V}, clusters::GenericClusters,
+                                    x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters))
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
@@ -114,7 +116,8 @@ end
 
 Returns normalized probability vector for a data point being right or left subcluster
 """
-@inline function SampleSubCluster(logπs::Vector{V}, cluster::SplitMergeCluster, x::AbstractVector) where V<:Real
+@inline function SampleSubCluster(logπs::Vector{V}, cluster::SplitMergeCluster,
+                                    x::AbstractVector) where V<:Real
     p1 = logπs[1] + logαpdf(cluster,x, Val(false))
     p2 = logπs[2] + logαpdf(cluster,x, Val(true))
     if p1>p2
@@ -126,7 +129,8 @@ Returns normalized probability vector for a data point being right or left subcl
 end
 
 
-function update_clusters!(m::AbstractDPModel, X::AbstractMatrix, clusters::Dict, labels::AbstractVector{Tuple{Int,Bool}})
+function update_clusters!(m::AbstractDPModel, X::AbstractMatrix, clusters::GenericClusters,
+                            labels::AbstractVector{Tuple{Int,Bool}})
     for (k,c) in clusters
         indices = get_cluster_inds(k,labels)
         right   = suffstats(m,X[:,get_right_inds(indices,labels)])
@@ -136,8 +140,9 @@ function update_clusters!(m::AbstractDPModel, X::AbstractMatrix, clusters::Dict,
     return clusters
 end
 
-function propose_merges(m::AbstractDPModel{T}, clusters::Dict{Int,<:SplitMergeCluster},
-                        X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}}, maySplit::Dict{Int,Bool}) where T
+function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
+                        X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},
+                        maySplit::Dict{Int,Bool}) where T
     α    = m.α
     logα = log(α)
     merge_with = Dict{Int,Int}()
@@ -168,7 +173,8 @@ function propose_merges(m::AbstractDPModel{T}, clusters::Dict{Int,<:SplitMergeCl
     end
     return merge_with
 end
-function propose_splits!(m::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},  clusters::Dict, maybe_split::Dict{Int,Bool})
+function propose_splits!(m::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},
+                        clusters::GenericClusters, maybe_split::Dict{Int,Bool})
     logα = log(m.α)
     will_split = Dict{Int,Bool}()
     for (k,c) in clusters
@@ -188,7 +194,7 @@ end
 function reset_cluster!(model::AbstractDPModel{V,D},
                         X::AbstractMatrix,
                         labels::AbstractVector{Tuple{Int,Bool}},
-                        clusters::Dict,
+                        clusters::GenericClusters,
                         key::Int) where {V<:Real,D}
     indices = get_cluster_inds(key,labels)
     for i in indices

@@ -21,6 +21,9 @@ DPMM.initialize_clusters
 
 ## Algorithms (Internal)
 ```@docs
+DPMM.random_labels
+DPMM.create_clusters
+DPMM.empty_cluster
 DPMM.RestrictedClusterProbs
 DPMM.CRPprobs
 DPMM.SampleSubCluster
@@ -28,12 +31,23 @@ DPMM.ClusterProbs
 DPMM.place_x!
 DPMM.label_x
 DPMM.logmixture_πs
+
+```
+
+## Distributions
+```@docs
+DPMM.NormalInverseWishart
+DPMM.MvNormalFast
+DPMM.DirichletFast
+DPMM.MultinomialFast
 ```
 
 ## Clusters
-
 ```@docs
 DPMM.AbstractCluster
+DPMM.lognαpdf
+DPMM.logαpdf
+DPMM.population
 DPMM.CollapsedCluster
 DPMM.DirectCluster
 DPMM.SplitMergeCluster
@@ -53,6 +67,10 @@ DPMM.DPMNMMStats
 ```@docs
 DPMM.setup_scene
 DPMM.readNYTimes
+DPMM.GridMixture
+DPMM.RandMixture
+DPMM.DPSparseMatrix
+DPMM.DPSparseVector
 ```
 
 ## Function Index

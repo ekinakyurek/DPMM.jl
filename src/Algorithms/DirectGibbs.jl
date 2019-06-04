@@ -60,7 +60,8 @@ empty_cluster(algo::DirectAlgorithm) = DirectCluster(algo.model,Val(true))
 ###
 
 # Serial Direct Gibbs Algorithm
-function direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
+function direct_gibbs!(model, X::AbstractMatrix, labels,
+                      clusters::GenericClusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
         logπs        = logmixture_πs(model.α,clusters) # unnormalized weights
@@ -79,7 +80,7 @@ end
 
 Sample log mixture weights from Dirichlet Distribution.
 """
-function logmixture_πs(α::V, clusters::Dict{<:Integer, <:AbstractCluster}) where V<:Real
+function logmixture_πs(α::V, clusters::GenericClusters) where V<:Real
     log.(rand(DirichletCanon([(V(population(c)) for c in values(clusters))...;α])))
 end
 
@@ -89,7 +90,8 @@ end
 
 Returns normalized probability vector for a data point being any cluster + a new cluster
 """
-function ClusterProbs(logπs::AbstractVector{V}, clusters::Dict{Int,<:AbstractCluster}, cluster0::AbstractCluster, x::AbstractVector) where V<:Real
+function ClusterProbs(logπs::AbstractVector{V}, clusters::GenericClusters,
+                      cluster0::AbstractCluster, x::AbstractVector) where V<:Real
     p = Array{V,1}(undef,length(clusters)+1)
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
@@ -102,8 +104,7 @@ function ClusterProbs(logπs::AbstractVector{V}, clusters::Dict{Int,<:AbstractCl
     return pc ./ sum(pc)
 end
 
-# Serial Quasi-Direct Gibbs Algorithm
-function quasi_direct_gibbs!(model, X::AbstractMatrix, labels, clusters, empty_cluster;T=10, scene=nothing)
+function quasi_direct_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericClusters, empty_cluster;T=10, scene=nothing)
     for t in 1:T
         record!(scene,labels,t)
         @inbounds for i=1:size(X,2)
@@ -120,7 +121,7 @@ end
 #### Parallel
 ###
 # Parallel Direct Gibbs Kernel
-function direct_parallel!(logπs, X, range, labels, clusters, empty_cluster)
+function direct_parallel!(logπs, X, range, labels, clusters::GenericClusters, empty_cluster)
     for i=1:size(X,2)
         probs      = ClusterProbs(logπs,clusters,empty_cluster,view(X,:,i)) # chinese restraunt process probabilities
         znew       = rand(GLOBAL_RNG,AliasTable(probs))# new label
@@ -129,11 +130,11 @@ function direct_parallel!(logπs, X, range, labels, clusters, empty_cluster)
     return SuffStats(Main._model, X, convert(Array,labels[range]))
 end
 
-@inline direct_gibbs_parallel!(labels, clusters, πs) =
+@inline direct_gibbs_parallel!(labels, clusters::GenericClusters , πs) =
     direct_parallel!(πs,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
 # Parallel Direct Gibbs Algorithm
-function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
+function direct_gibbs_parallel!(model, X, labels::SharedArray, clusters::GenericClusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
         record!(scene,labels,t)
         logπs = logmixture_πs(model.α,clusters) # unnormalized weights
@@ -161,7 +162,7 @@ end
     quasi_direct_parallel!(Main._model,Main._X,localindices(labels),labels,clusters,Main._cluster0)
 
 # Parallel Quasi-Direct Gibbs Algorithm
-function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters, empty_cluster; scene=nothing, T=10)
+function quasi_direct_gibbs_parallel!(model, X,  labels::SharedArray, clusters::GenericClusters, empty_cluster; scene=nothing, T=10)
     for t=1:T
         record!(scene,labels,t)
         stats = Dict{Int,<:SufficientStats}[]

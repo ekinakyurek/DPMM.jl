@@ -1,3 +1,16 @@
+"""
+    DirichletFast{T<:Real} <:  ContinuousMultivariateDistribution
+
+Dirichlet distribution as a prior to multinomial parameters.
+
+The difference between `DirichletFast` and `Dirichlet` is that `randn`
+returns `MultinomialFast` distribution in `DirichletFast`.
+
+It also does not calculate normalization constant at any time,
+so it has faster constructor than `Dirichlet`.
+
+see [`MultinomialFast`](@ref)
+"""
 struct DirichletFast{T<:Real} <:  ContinuousMultivariateDistribution
     α::Vector{T}
 end
@@ -25,7 +38,7 @@ function _rand!(d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
     MultinomialFast(log.(multiply!(x, inv(s))))
 end
 
-@inline rand(d::DirichletCanon) = _rand!(d,similar(d.alpha))
+@inline rand(d::DirichletCanon) = _rand!(GLOBAL_RNG,d,similar(d.alpha))
 
 function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
     lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
@@ -34,6 +47,16 @@ end
 ###
 #### Multinomial
 ###
+"""
+    MultionmialFast{T<:Real} <:  ContinuousMultivariateDistribution
+
+Multinomial distribution is redifined for the purpose of fast likelihood calculations
+on `DPSparseVector`.
+
+The other difference between `MultinomialFast` and `Multionomial` is that
+The `n`: trial numbers is not set. It is calculated by the input vector in the pdf function.
+So, it can produce pdf for any discrete `x` vector.
+"""
 struct MultinomialFast{T<:Real} <: DiscreteMultivariateDistribution
     logp::Vector{T}
 end

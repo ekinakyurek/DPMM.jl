@@ -34,7 +34,7 @@ There are also specific methods defined for creating clusters for whole data:
 SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}})
 ```
 
-see `AbstractCluster` for generic functions for all Cluster types.
+see [`AbstractCluster`](@ref) for generic functions for all Cluster types.
 
 The `logαpdf` and `lognαpdf` generic functions are extended for subcluster likelihoods.
 ```julia

@@ -10,7 +10,7 @@ import SparseArrays: AbstractSparseMatrix, AbstractSparseVector, nonzeroinds, no
 
 
 import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon,
-                      _logpdf!, rand, pdf, params, _wishart_genA, var,
+                      _logpdf!, rand, pdf, params, _wishart_genA!, var,
                       mean, cov, params, invcov, logdetcov, sqmahal, sqmahal!,
                       partype, unwhiten_winv!,log2π, mvnormal_c0, _logpdf, lgamma,
                       xlogy, NoArgCheck, suffstats, SufficientStats, GenericMvTDist,
@@ -59,7 +59,7 @@ Keywords:
 
 - `benchmarks=false` : if true returns elapsed time
 
-- `scene=nothing`: plot scene for visualization. see `setup_scene`
+- `scene=nothing`: plot scene for visualization. see [`setup_scene`](@ref)
 
 - o... : other keyword argument specific to `algorithm`
 """

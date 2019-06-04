@@ -1,3 +1,10 @@
+"""
+    DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
+
+`DPSparseVector` is almost same with `SparseArrays.SparseVector`
+
+The only difference is summation between `DPSparseVector`s results with a `Vector`.
+"""
 struct DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
     n::Int              # Length of the sparse vector
     nzind::Vector{Ti}   # Indices of stored values
@@ -23,6 +30,14 @@ struct DPSparseMatrix{Tv,Ti<:Integer} <: AbstractSparseMatrix{Tv,Ti}
     data::Vector{DPSparseVector{Tv,Ti}}       # Stored columns as sparse vector
 end
 
+"""
+    DPSparseMatrix(X::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
+
+DPSparseMatrix has fast getindex methods for column indexing (i.e X[:,i])
+It also doesn't copy column and return `DPSparseVector` for a column indexing.
+
+see [`DPSparseVector`](@ref)
+"""
 function DPSparseMatrix(X::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
     DPSparseMatrix{Tv,Ti}(X.m,X.n,map(i->DPSparseVector(X[:,i]),1:size(X,2)))
 end

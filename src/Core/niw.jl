@@ -1,4 +1,12 @@
 const logpi = log(π)
+
+"""
+    NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistribution
+
+Normal Inverse Wishart distribution is prior for `MvNormalFast` distribution.
+
+see [`MvNormalFast`](@ref)
+"""
 struct NormalInverseWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistribution
     μ::Vector{T}
     λ::T  # This scales precision (inverse covariance)
@@ -44,8 +52,10 @@ function rand(niw::NormalInverseWishart{T,<:Any}) where T
     return MvNormalFast(μ, J)
 end
 
-function randWishart(S::AbstractPDMat, df::Real)
-    A = _wishart_genA(dim(S), df)
+function randWishart(S::AbstractPDMat{T}, df::Real) where T
+    p = dim(S)
+    A = zeros(T,p,p)
+    _wishart_genA!(GLOBAL_RNG,p, df,A)
     unwhiten!(S, A)
     A .= A * A'
 end

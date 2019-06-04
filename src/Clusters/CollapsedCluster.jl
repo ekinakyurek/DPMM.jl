@@ -16,7 +16,28 @@ Other generic functions are implemented on top of these core functions.
 """
 abstract type AbstractCluster end
 const GenericClusters = Dict{Int, <:AbstractCluster}
+
+"""
+    population(m::AbstractCluster)
+
+Number of data points in a cluster
+"""
+population(m::AbstractCluster)
+
+"""
+    logαpdf(m::AbstractCluster,x::AbstractArray)
+
+log(∝likelihood) of a data point given by a cluster.
+"""
+logαpdf(m::AbstractCluster,x::AbstractArray)
+
 @inline isempty(m::AbstractCluster)    = population(m)==0
+
+"""
+    lognαpdf(m::AbstractCluster,x::AbstractArray)
+
+log(population) + log(∝likelihood) of a data point given by a cluster.
+"""
 @inline lognαpdf(m::AbstractCluster,x) = log(population(m)) + logαpdf(m,x)
 
 """
@@ -54,7 +75,7 @@ CollapsedClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
 +(c::CollapsedCluster, x::AbstractVector)
 ```
 
-see `AbstractCluster` for generic functions for all Cluster types.
+see [`AbstractCluster`](@ref) for generic functions for all Cluster types.
 """
 struct CollapsedCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int

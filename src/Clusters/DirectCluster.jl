@@ -26,7 +26,7 @@ DirectClusters(model::AbstractDPModel, X::AbstractMatrix, labels::AbstractArray{
 DirectClusters(model::AbstractDPModel, stats::Dict{Int,<:SufficientStats})
 ```
 
-see `AbstractCluster` for generic functions for all Cluster types.
+see [`AbstractCluster`](@ref) for generic functions for all Cluster types.
 """
 struct DirectCluster{Pred<:Distribution, Prior<:Distribution} <: AbstractCluster
     n::Int

@@ -1,3 +1,10 @@
+"""
+    MvNormalFast{T<:Real,Prec<:AbstractPDMat,Mean<:AbstractVector} <: AbstractMvNormal
+
+Normal distribution is redifined for the purpose of fast likelihood calculations.
+
+It uses μ(mean), J (precision) parametrization.
+"""
 struct MvNormalFast{T<:Real,Prec<:AbstractPDMat,Mean<:AbstractVector} <: AbstractMvNormal
     μ::Mean
     J::Prec

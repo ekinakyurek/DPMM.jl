@@ -44,6 +44,9 @@ run!(algo::CollapsedAlgorithm{false,false},X,args...;o...) =
 run!(algo::CollapsedAlgorithm{false,true},X,args...;o...) =
     quasi_collapsed_gibbs!(algo.model,X,args...;o...)
 
+run!(algo::CollapsedAlgorithm{true,false},X,args...;o...) =
+    error("Collapsed Gibbs Sampler is not parallelizable!")
+
 run!(algo::CollapsedAlgorithm{true,true},X,args...;o...) =
     quasi_collapsed_gibbs_parallel!(algo.model,X,args...;o...)
 

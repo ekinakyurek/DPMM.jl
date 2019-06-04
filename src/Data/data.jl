@@ -3,11 +3,21 @@ function createΣ(T,d...;α=0.1)
      return σ*σ'
 end
 
+"""
+    RandMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
+
+Randomly generates K Gaussian
+"""
 function RandMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
     comps = [MvNormal(2K*(rand(T,D) .+ 2i),createΣ(T,D,D)) for i=1:K]
     return MixtureModel(comps,πs)
 end
 
+"""
+    GridMixture(L::Integer; πs::Vector{T}=ones(L*L)/(L*L)) where T<:Real
+
+Generates LxL grid Gaussians
+"""
 function GridMixture(L::Integer; πs::Vector{T}=ones(L*L)/(L*L)) where T<:Real
     r = L÷2
     if isodd(L)
@@ -21,13 +31,18 @@ end
 
 @inline function _rand_with_label!(d::MixtureModel{<:Any,<:Any,<:Any,T},v::AbstractVector{T}) where T<:Real
     c  = rand(d.prior)
-    _rand!(component(d,c),v)
+    _rand!(GLOBAL_RNG,component(d,c),v)
     return c
 end
 
 @inline _rand_with_label!(d::MixtureModel{<:Any,<:Any,<:Any,T},v::AbstractMatrix{T}) where T<:Real =
      [_rand_with_label!(d,col) for col in eachcol(v)]
 
+"""
+    rand_with_label(d::MixtureModel{<:Any,<:Any,<:Any,T}, n=1)
+
+Draw samples from a mixture model. It returns data points and labels as a tuple (X,labels).
+"""
 @inline function rand_with_label(d::MixtureModel{<:Any,<:Any,<:Any,T}) where T<:Real
     v = Vector{T}(undef,length(d))
     c = _rand_with_label!(d,v)

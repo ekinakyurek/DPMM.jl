@@ -1,20 +1,41 @@
 """
     DPMMAlgorithm{P}
 
-   Abstract base class for algorithms
+Abstract base class for algorithms
 
-  `P` stands for parallel.
+`P` stands for parallel.
 
-   Each subtype should provide the following methods:
-   - `AlgoType(X::AbstractMatrix; o...)`` : constructor
-   - `random_labels(X::AbstractMatrix,algo::AlgoType{P}) where P` : random label generator
-   - `create_clusters(X::AbstractMatrix,algo::AlgoType{P},labels) where P` : initial clusters
-   - `empty_cluster(algo::AlgoType) where P` : an empty cluster (may be nothing)
-   - `run!(algo::AlgoType{P}, X, labels, clusters, emptycluster;o...) where P` : run! modifies labels
+Each subtype should provide the following methods:
+- `AlgoType(X::AbstractMatrix; o...)`` : constructor
+- `random_labels(X::AbstractMatrix,algo::AlgoType{P}) where P` : random label generator
+- `create_clusters(X::AbstractMatrix,algo::AlgoType{P},labels) where P` : initial clusters
+- `empty_cluster(algo::AlgoType) where P` : an empty cluster (may be nothing)
+- `run!(algo::AlgoType{P}, X, labels, clusters, emptycluster;o...) where P` : run! modifies labels
 
-   Other generic functions is implemented on top of these core functions.
+Other generic functions is implemented on top of these core functions.
 """
 abstract type DPMMAlgorithm{P} end
+
+"""
+    random_labels(X::AbstractMatrix, algo::DPMMAlgorithm)
+
+random label generator for the data. algo.ninit specifies number of clusters
+"""
+random_labels(::AbstractMatrix, ::DPMMAlgorithm)
+
+"""
+    create_clusters(X,algo::CollapsedAlgorithm,labels)
+
+generate clusters from labels generator for the data. algo.ninit specifies number of clusters
+"""
+create_clusters(X,algo::DPMMAlgorithm,labels)
+
+"""
+    empty_cluster(X,algo::CollapsedAlgorithm,labels)
+
+generates an empty (0 data points) cluster
+"""
+empty_cluster(::DPMMAlgorithm)
 
 _default_model(::Type{<:AbstractFloat}) = DPGMM
 _default_model(::Type{<:Integer})       = DPMNMM
@@ -22,14 +43,18 @@ _default_model(::Type{<:Integer})       = DPMNMM
 """
     run!(algo::DPMMAlgorithm, X, labels, clusters, emptycluster;o...)
 
-    Runs the specified Gibbs Algorithm
+Runs the specified Gibbs algorithm. Availables algorithms are:
+- `Collapsed Algorithms`
+- `DirectAlgorithm`
+- `SplitMergeAlgorithm`
+
 """
 run!(algo::DPMMAlgorithm,X,args...;o...)
 
 """
     setup_workers(ncpu::Integer)
 
-    Setup parallel process, initialize required modules
+Setup parallel process, initialize required modules
 """
 function setup_workers(ncpu::Integer)
     if nworkers() != ncpu
@@ -43,7 +68,8 @@ end
 
 """
     initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}
-Initialize clusters and labels, sends data to workers if algo is parallel
+
+Initialize clusters and labels, sends related data to workers if the algorithm is parallel
 """
 function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
     labels    = random_labels(X,algo)
