@@ -24,6 +24,8 @@ DPSparseVector(n::Integer, nzind::Vector{Ti}, nzval::Vector{Tv}) where {Tv,Ti} =
 DPSparseVector(x::SparseVector{Tv,Ti}) where {Tv,Ti} =
     DPSparseVector{Tv,Ti}(x.n, x.nzind, x.nzval)
 
+Base.size(m::DPSparseVector{Int64,Int64}) = (m.n,)
+Base.length(m::DPSparseVector{Int64,Int64}) = m.n
 struct DPSparseMatrix{Tv,Ti<:Integer} <: AbstractSparseMatrix{Tv,Ti}
     m::Int                               # Number of rows
     n::Int                               # Number of columns

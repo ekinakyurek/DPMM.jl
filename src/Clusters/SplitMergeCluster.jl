@@ -108,6 +108,7 @@ end
 @inline isempty(m::SplitMergeCluster, sub::Val) = population(m,side)==0
 @inline lognαpdf(m::SplitMergeCluster, x, sub::Val)  = log(population(m, sub)) + logαpdf(m, x, sub)
 
+@inline posterior(m::SplitMergeCluster) = m.post
 # Specific `find` functions
 @inline get_cluster_inds(key::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
     findall(l->l[1]==key,labels)

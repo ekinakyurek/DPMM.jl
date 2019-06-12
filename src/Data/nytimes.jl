@@ -4,7 +4,8 @@
 
     Read NYTimes dataset from given data file. It returns DPSparseMatrix
 """
-function readNYTimes(file::AbstractString, entry::Int=69679427)
+function readNYTimes(file::AbstractString=dir("data/docword.nytimes.txt"),
+                     entry::Int=69679427)
     J=Array{Int}(undef,entry);
     Ir= Array{Int}(undef,entry);
     V = Array{Int}(undef,entry);
@@ -17,4 +18,27 @@ function readNYTimes(file::AbstractString, entry::Int=69679427)
         V[i]  = parse(Int,tokens[3])
     end
     return DPSparseMatrix(sparse(Ir,J,V))
+end
+
+function printNYClusters(X, labels; modelType=DPMNMM)
+    model = modelType(X)
+    uniquez  = unique(labels)
+    stats = SuffStats(model, X, labels)
+    words = readlines(dir("data/vocab.nytimes.txt"))
+    for (k,stat) in stats
+          fname = dir("clusters/",string(k,".txt"))
+          println("writing to $fname")
+          f = open(fname,"w")
+          println(f,"word\tfreq")
+          α = stat.s
+          v = sortperm(α; rev=true)
+          for i in v
+               freq = α[i]
+               word = words[i]
+        	   if freq != 0
+                   	println(f,"$(freq)\t$(word)")
+        	   end
+          end
+          close(f)
+    end
 end

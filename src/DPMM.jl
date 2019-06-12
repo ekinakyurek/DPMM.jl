@@ -1,5 +1,5 @@
 module DPMM
-using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats #Makie
+using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats, Random #Makie
 
 import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~,@propagate_inbounds, @fastmath
 @inline ~(x::Distribution) = rand(x)
@@ -71,6 +71,7 @@ function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmar
     labels, clusters, cluster0 = initialize_clusters(X,algo)
     tres = @elapsed run!(algo, X, labels, clusters, cluster0; T=T, scene=scene)
     @info "$tres second passed"
+    labels = first.(labels) # not return subclusters
     if benchmark
         return labels, tres
     end

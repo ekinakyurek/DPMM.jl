@@ -24,16 +24,17 @@ convert(::Type{DirichletFast{T}}, α::Vector{S}) where {T<:Real, S<:Real} =
 convert(::Type{DirichletFast{T}}, d::DirichletFast{S}) where {T<:Real, S<:Real} =
     DirichletFast(convert(Vector{T}, d.α))
 
-length(d::DirichletFast) = length(d.α)
+@inline length(d::DirichletFast) = length(d.α)
 params(d::DirichletFast) = (d.α,)
 @inline partype(d::DirichletFast{T}) where {T<:Real} = T
 
-function _rand!(d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
+
+function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
     s = T(0)
     n = length(x)
     α = d.α
     for i in 1:n
-        @inbounds s += (x[i] = rand(Gamma(α[i])))
+        @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
     end
     MultinomialFast(log.(multiply!(x, inv(s))))
 end
@@ -63,7 +64,7 @@ end
 
 # Parameters
 ncategories(d::MultinomialFast) = length(d.logp)
-length(d::MultinomialFast) = length(d.logp)
+@inline length(d::MultinomialFast) = length(d.logp)
 probs(d::MultinomialFast) = exp.(d.logp)
 params(d::MultinomialFast) = (d.logp,)
 @inline partype(d::MultinomialFast{T}) where {T<:Real} = T
@@ -107,4 +108,43 @@ function _logpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
         s += xi * p_i
     end
     return s
+end
+
+### DirichletMultinomialPredictive
+
+struct DirichletMultPredictive{T<:Real} <:  ContinuousMultivariateDistribution
+    α::Vector{T}
+end
+
+@inline length(d::DirichletMultPredictive) = length(d.α)
+params(d::DirichletMultPredictive) = (d.α,)
+partype(d::DirichletMultPredictive{T}) where {T<:Real} = T
+
+function logαpdf(d::DirichletMultPredictive{T},x::AbstractVector) where T
+    # log predictive probability of xx given other data items in the component
+    # log p(xi|x_1,...,x_n)
+    n = sum(x)
+    sα = sum(d.α)
+    return lgamma(n+1) -
+           sum(lgamma, x .+ 1) +
+           lgamma(sα) -
+           sum(lgamma, d.α) +
+           sum(lgamma, d.α .+ x)-
+           lgamma(n + sα)
+end
+
+function logαpdf(d::DirichletMultPredictive{T},x::DPSparseVector) where T
+    # log predictive probability of xx given other data items in the component
+    # log p(xi|x_1,...,x_n)
+    n     = sum(x)
+    sα    = sum(d.α)
+    dαpx  = add!(copy(d.α),x)
+    onepx = add!(ones(T,length(d)),x)
+
+    return lgamma(n+1) -
+           sum(lgamma,onepx) +
+           lgamma(sα) -
+           sum(lgamma,d.α) +
+           sum(lgamma,dαpx)-
+           lgamma(n + sα)
 end
