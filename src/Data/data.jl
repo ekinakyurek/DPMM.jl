@@ -14,6 +14,17 @@ function RandMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
 end
 
 """
+    RandDiscreteMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
+
+Randomly generates K Gaussian
+"""
+function RandDiscreteMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
+    comps = [Multinomial(1000, rand(Dirichlet(ones(D)))) for i=1:K]
+    return MixtureModel(comps,πs)
+end
+
+
+"""
     GridMixture(L::Integer; πs::Vector{T}=ones(L*L)/(L*L)) where T<:Real
 
 Generates LxL grid Gaussians

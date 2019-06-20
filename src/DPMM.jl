@@ -29,7 +29,7 @@ include("Core/niw.jl"); export NormalInverseWishart
 include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
 include("Core/dirichletmultinomial.jl"); export DirichletFast
 include("Core/algorithms.jl"); export run!, setup_workers, initialize_clusters
-include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture
+include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture, RandDiscreteMixture
 include("Data/nytimes.jl"); export readNYTimes
 include("Data/visualize.jl"); export setup_scene
 include("Models/model.jl")

@@ -45,8 +45,9 @@ run!(algo::SplitMergeAlgorithm{false,M}, X, args...; o...) where M =
 run!(algo::SplitMergeAlgorithm{true,M}, X, args...;o...) where M =
     splitmerge_gibbs_parallel!(algo.model,X,args...;merge=M, o...)
 
-random_labels(X,algo::SplitMergeAlgorithm) =
+random_labels(X,algo::SplitMergeAlgorithm)  = 
     map(l->(l,rand()>0.5),rand(1:algo.ninit,size(X,2)))
+
 create_clusters(X, algo::SplitMergeAlgorithm, labels) =
     SplitMergeClusters(algo.model,X,labels)
 empty_cluster(algo::SplitMergeAlgorithm) = nothing # undefined

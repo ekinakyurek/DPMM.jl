@@ -31,18 +31,22 @@ params(d::DirichletFast) = (d.α,)
 
 function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
     s = T(0)
-    n = length(x)
+    n = length(d)
     α = d.α
-    for i in 1:n
-        @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
+    @simd for i=1:n
+        @fastmath @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
     end
-    MultinomialFast(log.(multiply!(x, inv(s))))
+    @simd for i=1:n
+        @fastmath @inbounds x[i] = log(x[i]) - s
+    end
+    MultinomialFast(x)
 end
 
 @inline rand(d::DirichletCanon) = _rand!(GLOBAL_RNG,d,similar(d.alpha))
 
 function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
-    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
+    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) +
+    sum(lgamma.(posterior.α) .- lgamma.(prior.α))
 end
 
 ###
@@ -70,17 +74,24 @@ params(d::MultinomialFast) = (d.logp,)
 @inline partype(d::MultinomialFast{T}) where {T<:Real} = T
 
 function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
-    logp = d.logp
-    n    = sum(x)
-    s = T(0)
-    for (i,index) in enumerate(x.nzind)
-        @inbounds s += logp[index]*x.nzval[i]
+    logp  = d.logp
+    nzval = nonzeros(x)
+    s     = T(0)
+    @fastmath @simd for l in enumerate(x.nzind)
+        @inbounds s += logp[last(l)]*nzval[first(l)]
     end
     return s
 end
 
-# FIXME: This is not good!
-@inline logαpdf(d::MultinomialFast, x::AbstractVector{T}) where T<:Real  = dot(x, d.logp)
+@inline function logαpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
+    logp = d.logp
+    s = T(0)
+    D = length(d)
+    @fastmath @simd for i=1:D
+        @inbounds s += logp[i]*T(x[i])
+    end
+    return s
+end
 
 function _logpdf(d::MultinomialFast{T}, x::AbstractVector{T}) where T<:Real
     n = sum(x)

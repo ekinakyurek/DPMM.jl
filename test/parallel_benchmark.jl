@@ -1,4 +1,4 @@
-using DPMM, ArgParse
+using DPMM, ArgParse, Random
 
 function parser(args)
     s = ArgParseSettings()
@@ -31,6 +31,17 @@ function parser(args)
        help = "number of iterations"
        arg_type = Int
        default = 100
+      "--seed"
+       help = "seed for random number generator"
+       arg_type = Int
+       default = 11131994
+      "--discrete"
+        action = :store_true
+        help = "test on multinomial data"
+      "--runserials"
+        action = :store_true
+        help = "run non parallel versions of the algorithm for comparison"
+ 
     end
     return parse_args(args, s; as_symbols=true)
 end
@@ -38,35 +49,66 @@ end
 #Hyper Parameters for Experiment
 const 𝒪 = parser(ARGS)
 𝒪[:α] = 𝒪[:alpha]
-gmodel = RandMixture(𝒪[:K])
-X,clabels = rand_with_label(gmodel,𝒪[:N])
 
-println("Benchmarking Quasi-Collapsed Algorithm")
-fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true)
-_,qct = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-println("Benchmarking Direct Algorithm")
-fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
-_,dt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-println("Benchmarking Split Merge Algorithm")
-fit(X; algorithm=SplitMergeAlgorithm,T=10, ninit=1)
-_,smt = fit(X; algorithm=SplitMergeAlgorithm,T=𝒪[:T],ninit=𝒪[:Kinit], benchmark=true)
+if 𝒪[:discrete]
+    gmodel = RandDiscreteMixture(𝒪[:K]; D=𝒪[:D])
+else
+    gmodel = RandMixture(𝒪[:K]; D=𝒪[:D])
+end
+
+Random.seed!(11131994)
+X = rand(gmodel,𝒪[:N])
+
+ti1=ti2=ti3=0.0
+if  𝒪[:runserials]
+    println("Benchmarking: ", CollapsedAlgorithm)
+    fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true)
+    Random.seed!(11131994)
+    _,ti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti1)
+    
+    println("Benchmarking: ", DirectAlgorithm)
+    fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
+    Random.seed!(11131994)
+    _,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    Random.seed!(11131994)
+    _,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti2)
+
+    println("Benchmarking: ", SplitMergeAlgorithm)
+    fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
+    Random.seed!(11131994)
+    _,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    Random.seed!(11131994)
+    _,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti3)
+end
 
 
-println("Benchmarking Quasi-Collapsed Algorithm with $(𝒪[:ncpu]) workers")
-fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], ncpu=𝒪[:ncpu], benchmark=true)
-fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
-_,qcpt= fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
+println("Benchmarking: ", CollapsedAlgorithm)
+fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti1)
 
-println("Benchmarking Direct Algorithm with with $(𝒪[:ncpu]) workers")
-fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], ncpu=𝒪[:ncpu], benchmark=true)
-fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
-_,dpt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
+println("Benchmarking: ", DirectAlgorithm)
+fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti2)
 
-println("Benchmarking Split-Merge Algorithm with $(𝒪[:ncpu]) workers")
-fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=1, ncpu=𝒪[:ncpu], benchmark=true)
-fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
-_,smpt = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], ncpu=𝒪[:ncpu], benchmark=true)
+println("Benchmarking: ", SplitMergeAlgorithm)
+fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+Random.seed!(11131994)
+_,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti3)
 
 println("N\tD\tα\tK\tKinit\tCollapsed\tCollapsed-P\tDirect\tDirect-P\tS-M\tS-M-P\t")
 print("$(𝒪[:N])\t$(𝒪[:D])\t$(𝒪[:alpha])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t")
-println("$(qct)\t$(qcpt)\t$(dt)\t$(dpt)\t$(smt)\t$(smpt)")
+println("$(ti1)\t$(pti1)\t$(ti2)\t$(pti2)\t$(ti3)\t$(pti3)")
