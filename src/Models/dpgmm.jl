@@ -4,7 +4,7 @@
    Class for DP Gaussian Mixture Models
 """
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
-    θprior::NormalInverseWishart{T}
+    θprior::NormalWishart{T}
     α::T
 end
 
@@ -13,13 +13,13 @@ function DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real
 end
 
 @inline DPGMM{T,D}(α::Real) where {T<:Real,D} =
-    DPGMM{T,dim}(NormalInverseWishart{T}(D),T(α))
+    DPGMM{T,dim}(NormalWishart{T}(D),T(α))
 
 @inline DPGMM{T}(α::Real, μ0::AbstractVector{T}) where T<:Real =
-    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0),T(α))
+    DPGMM{T,length(μ0)}(NormalWishart{T}(μ0),T(α))
 
 @inline DPGMM{T}(α::Real, μ0::AbstractVector{T}, Σ0::AbstractMatrix{T}) where T<:Real =
-    DPGMM{T,length(μ0)}(NormalInverseWishart{T}(μ0,Σ0), T(α))
+    DPGMM{T,length(μ0)}(NormalWishart{T}(μ0,Σ0), T(α))
 
 @inline stattype(::DPGMM{T}) where T = DPGMMStats{T}
 
@@ -76,7 +76,7 @@ end
     DPGMMStats{T}(m.nμ,m.S,m.n-size(X,2))
 end
 
-function _posterior(m::NormalInverseWishart{V},T::DPGMMStats{V}) where V<:Real
+function _posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real
     λn   = m.λ + V(T.n)
     νn   = m.ν + V(T.n)
     μn   = (m.λ * m.μ .+ T.nμ)/λn
@@ -86,7 +86,7 @@ end
 
 @inline _posterior(m::DPGMM,T::DPGMMStats) = _posterior(m.θprior,T)
 
-@inline function posterior_predictive(m::NormalInverseWishart{T}) where T<:Real
+@inline function posterior_predictive(m::NormalWishart{T}) where T<:Real
     df = m.ν-length(m.μ)+1
     MvTDist(df, m.μ, ((m.λ+1)/(m.λ*df)) * m.Ψ)
 end
@@ -103,10 +103,10 @@ end
 
 @inline posterior_predictive(m::DPGMM) = posterior_predictive(m.θprior)
 @inline posterior(m::DPGMM,T::DPGMMStats) =  posterior(m.θprior,T)
-@inline posterior(m::NormalInverseWishart{V},T::DPGMMStats{V}) where V<:Real =
-    T.n!=0 ? NormalInverseWishart(_posterior(m,T)...) : m
+@inline posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real =
+    T.n!=0 ? NormalWishart(_posterior(m,T)...) : m
 
-@inline function downdate_predictive(p::NormalInverseWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
+@inline function downdate_predictive(p::NormalWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
     λ   = p.λ+n
     dfn = m.df-1
     λn  = λ - 1
@@ -114,7 +114,7 @@ end
     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankdowndate(((λ*m.df)/(λ+1))*m.Σ.chol,sqrt(λ/λn) * (x-m.μ))))
 end
 
-@inline function update_predictive(p::NormalInverseWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
+@inline function update_predictive(p::NormalWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
     λ   = p.λ+n # We sart λ0=1,ν0=D+3.So df=ν-D+1 => λ=df
     dfn = m.df+1
     λn  = λ + 1
