@@ -1,8 +1,9 @@
 module DPMM
 using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats, Random #Makie
 
-import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~,@propagate_inbounds, @fastmath
+import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~,@propagate_inbounds
 import SharedArrays: range_1dim
+
 @inline ~(x::Distribution) = rand(x)
 
 const colorpalette  = RGBA.(palette("Set3", 12))
