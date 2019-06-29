@@ -56,11 +56,11 @@ function logαpdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T
     s = zero(T)
 
     y = Vector{T}(undef,D)
-    @fastmath @simd for i=1:D
+     @simd for i=1:D
         @inbounds y[i] = x[i]-μ[i]
     end
 
-    @fastmath @simd for i=1:D
+     @simd for i=1:D
         for j=1:D
             @inbounds s += y[i] * y[j] * J[i, j]
         end

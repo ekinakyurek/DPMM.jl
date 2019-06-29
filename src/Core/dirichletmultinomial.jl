@@ -34,10 +34,10 @@ function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVec
     n = length(d)
     α = d.α
     @simd for i=1:n
-        @fastmath @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
+         @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
     end
     @simd for i=1:n
-        @fastmath @inbounds x[i] = log(x[i]) - s
+         @inbounds x[i] = log(x[i]) - s
     end
     MultinomialFast(x)
 end
@@ -77,7 +77,7 @@ function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     logp  = d.logp
     nzval = nonzeros(x)
     s     = T(0)
-    @fastmath @simd for l in enumerate(x.nzind)
+     @simd for l in enumerate(x.nzind)
         @inbounds s += logp[last(l)]*nzval[first(l)]
     end
     return s
@@ -87,7 +87,7 @@ end
     logp = d.logp
     s = T(0)
     D = length(d)
-    @fastmath @simd for i=1:D
+     @simd for i=1:D
         @inbounds s += logp[i]*T(x[i])
     end
     return s
