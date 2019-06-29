@@ -80,9 +80,9 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
         labels = SharedArray(labels)
         @everywhere ws _model    = $(algo.model)
         @everywhere ws _cluster0 = $cluster0
-        @sync for p in procs(labels)
-            inds = remotecall_fetch(localindices,p,labels)
-            @async @everywhere [p] _X = $(X[:,inds])
+        @sync for (i,p) in enumerate(procs(labels))
+            xworker = X[:,range_1dim(labels,i)]
+            ref = @spawnat(p, Core.eval(Main, Expr(:(=), :_X, xworker)))
         end
     end
     return labels, clusters, cluster0

@@ -1,12 +1,14 @@
 """
    DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
-   
+
    Class for DP Gaussian Mixture Models
 """
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalWishart{T}
     α::T
 end
+
+@inline prior(m::DPGMM) = m.θprior
 
 function DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real
     DPGMM{T}(T(α), vec(mean(X,dims=2)),(X*X')/size(X,2))
@@ -21,7 +23,7 @@ end
 @inline DPGMM{T}(α::Real, μ0::AbstractVector{T}, Σ0::AbstractMatrix{T}) where T<:Real =
     DPGMM{T,length(μ0)}(NormalWishart{T}(μ0,Σ0), T(α))
 
-@inline stattype(::DPGMM{T}) where T = DPGMMStats{T}
+@inline stattype(::NormalWishart{T}) where T = DPGMMStats{T}
 
 
 """
@@ -35,13 +37,15 @@ struct DPGMMStats{T<:Real} <: SufficientStats
     n::Int
 end
 
-@inline suffstats(m::DPGMM{T,D}) where {T<:Real,D} =
+@inline function suffstats(m::NormalWishart{T}) where T
+    D = length(m)
     DPGMMStats{T}(zeros(T,D),zeros(T,D,D),0)
+end
 
-@inline suffstats(m::DPGMM{T},X::AbstractMatrix{T}) where T<:Real =
+@inline suffstats(m::NormalWishart{T},X::AbstractMatrix{T}) where T<:Real =
     DPGMMStats{T}(vec(sum(X,dims=2)),X*X',size(X,2))
 
-@inline suffstats(m::DPGMM{T},x::AbstractVector{T}) where T<:Real =
+@inline suffstats(m::NormalWishart{T},x::AbstractVector{T}) where T<:Real =
     DPGMMStats{T}(x,x*x',1)
 
 @inline function +(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
@@ -84,25 +88,24 @@ function _posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real
     return (μn,λn,Ψn,νn)
 end
 
-@inline _posterior(m::DPGMM,T::DPGMMStats) = _posterior(m.θprior,T)
+@inline _posterior(m::NormalWishart,T::DPGMMStats) = _posterior(m.θprior,T)
 
 @inline function posterior_predictive(m::NormalWishart{T}) where T<:Real
     df = m.ν-length(m.μ)+1
     MvTDist(df, m.μ, ((m.λ+1)/(m.λ*df)) * m.Ψ)
 end
 
-@inline function posterior_predictive(m::DPGMM{V,D},T::DPGMMStats{V}) where {V<:Real,D}
+@inline function posterior_predictive(m::NormalWishart{V},T::DPGMMStats{V}) where V
     if T.n!=0
         (μn,λn,Ψn,νn) = _posterior(m,T)
-        df = νn-D+1
+        df = νn-length(m)+1
         MvTDist(df, μn, ((λn+1)/(λn*df)) * Ψn)
     else
         posterior_predictive(m)
     end
 end
 
-@inline posterior_predictive(m::DPGMM) = posterior_predictive(m.θprior)
-@inline posterior(m::DPGMM,T::DPGMMStats) =  posterior(m.θprior,T)
+
 @inline posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real =
     T.n!=0 ? NormalWishart(_posterior(m,T)...) : m
 
