@@ -121,10 +121,15 @@ function _logpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     return s
 end
 
-### DirichletMultinomialPredictive
-
 struct DirichletMultPredictive{T<:Real} <:  ContinuousMultivariateDistribution
     α::Vector{T}
+    sα::T
+    lgsα::T
+    slgα::T
+    function DirichletMultPredictive(α::Vector{T}) where T
+        sα = sum(α)
+        return new{T}(α, sα, lgamma(sα),sum(lgamma,α))
+    end
 end
 
 @inline length(d::DirichletMultPredictive) = length(d.α)
@@ -132,17 +137,8 @@ params(d::DirichletMultPredictive) = (d.α,)
 partype(d::DirichletMultPredictive{T}) where {T<:Real} = T
 
 function logαpdf(d::DirichletMultPredictive{T},x::AbstractVector) where T
-    # log predictive probability of xx given other data items in the component
-    # log p(xi|x_1,...,x_n)
-    n = sum(x)
-    sα = sum(d.α)
-    return lgamma(n+1) -
-           sum(lgamma, x .+ 1) +
-           lgamma(sα) -
-           sum(lgamma, d.α) +
-           sum(lgamma, d.α .+ x)-
-           lgamma(n + sα)
-end
+    d.lgsα - d.slgα + sum(lgamma, d.α .+ x) - lgamma(sum(x) + d.sα)
+end  
 
 function logαpdf(d::DirichletMultPredictive{T},x::DPSparseVector) where T
     # log predictive probability of xx given other data items in the component
