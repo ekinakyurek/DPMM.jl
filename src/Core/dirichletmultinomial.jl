@@ -1,3 +1,4 @@
+
 """
     DirichletFast{T<:Real} <:  ContinuousMultivariateDistribution
 
@@ -11,43 +12,40 @@ so it has faster constructor than `Dirichlet`.
 
 see [`MultinomialFast`](@ref)
 """
-struct DirichletFast{T<:Real} <:  ContinuousMultivariateDistribution
+struct DirichletFast{T<:Real} <: ContinuousMultivariateDistribution
     α::Vector{T}
 end
 
-DirichletFast(d::Integer, α::T) where {T<:Real} = DirichletFast{T}(d, α)
-DirichletFast(α::Vector{T}) where {T<:Integer} = DirichletFast{Float64}(convert(Vector{Float64},α))
-DirichletFast(d::Integer, α::Integer) = DirichletFast{Float64}(d, Float64(α))
+DirichletFast(α::Vector{<:Integer}) = DirichletFast{Float64}(Float64.(α))
 
-convert(::Type{DirichletFast{T}}, α::Vector{S}) where {T<:Real, S<:Real} =
-    DirichletFast(convert(Vector{T}, α))
-convert(::Type{DirichletFast{T}}, d::DirichletFast{S}) where {T<:Real, S<:Real} =
-    DirichletFast(convert(Vector{T}, d.α))
-
+# convert(::Type{DirichletFast{T}}, α::Vector{S}) where {T<:Real, S<:Real} =
+#     DirichletFast(convert(Vector{T}, α))
+# convert(::Type{DirichletFast{T}}, d::DirichletFast{S}) where {T<:Real, S<:Real} =
+#     DirichletFast(convert(Vector{T}, d.α))
 @inline length(d::DirichletFast) = length(d.α)
 params(d::DirichletFast) = (d.α,)
 @inline partype(d::DirichletFast{T}) where {T<:Real} = T
+#rand(d::DirichletFast) = _rand!(GLOBAL_RNG,d,Array{Float64,1}(undef,length(d.α)))
 
-
-function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVector{<:Real}) where T
+function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVector) where T
     s = T(0)
     n = length(d)
     α = d.α
-    @simd for i=1:n
+    @simd for i in eachindex(α)
          @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
     end
-    @simd for i=1:n
-         @inbounds x[i] = log(x[i]) - s
+    lgs = log(s)
+    @simd for i in eachindex(α)
+         @inbounds x[i] = log(x[i]) - lgs
     end
     MultinomialFast(x)
 end
 
 @inline rand(d::DirichletCanon) = _rand!(GLOBAL_RNG,d,similar(d.alpha))
 
-function lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)
-    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) +
-    sum(lgamma.(posterior.α) .- lgamma.(prior.α))
-end
+@inline lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)  = 
+    lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
+
 
 ###
 #### Multinomial
@@ -77,17 +75,16 @@ function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     logp  = d.logp
     nzval = nonzeros(x)
     s     = T(0)
-     @simd for l in enumerate(x.nzind)
+    @simd for l in enumerate(x.nzind)
         @inbounds s += logp[last(l)]*nzval[first(l)]
     end
     return s
 end
 
-@inline function logαpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
+function logαpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
     logp = d.logp
     s = T(0)
-    D = length(d)
-     @simd for i=1:D
+    @simd for i in eachindex(logp)
         @inbounds s += logp[i]*T(x[i])
     end
     return s
@@ -98,7 +95,7 @@ function _logpdf(d::MultinomialFast{T}, x::AbstractVector{T}) where T<:Real
     logp = d.logp
     S = partype(d)
     s = S(lgamma(n + 1))
-    for i = 1:length(x)
+    for i in eachindex(x)
         @inbounds xi = x[i]
         @inbounds p_i = logp[i]
         s -= S(lgamma(S(xi) + 1))
@@ -124,23 +121,22 @@ end
 struct DirichletMultPredictive{T<:Real} <:  ContinuousMultivariateDistribution
     α::Vector{T}
     sα::T
-    lgsα::T
-    slgα::T
-    function DirichletMultPredictive(α::Vector{T}) where T
-        sα = sum(α)
-        return new{T}(α, sα, lgamma(sα),sum(lgamma,α))
+    lgsα_slgα::T
+    function DirichletMultPredictive{T}(α::Vector{T}) where T
+        sα  = sum(α)
+        return new{T}(α, sα, lgamma(sα)-sum(lgamma,α))
     end
 end
+@inline DirichletMultPredictive(α::Vector{T}) where T<:Real = DirichletMultPredictive{T}(α)
+@inline DirichletMultPredictive(α::Vector{<:Integer}) = DirichletMultPredictive{Float64}(convert(Vector{Float64},α))
 
 @inline length(d::DirichletMultPredictive) = length(d.α)
 params(d::DirichletMultPredictive) = (d.α,)
 partype(d::DirichletMultPredictive{T}) where {T<:Real} = T
 
-function logαpdf(d::DirichletMultPredictive{T},x::AbstractVector) where T
-    d.lgsα - d.slgα + sum(lgamma, d.α .+ x) - lgamma(sum(x) + d.sα)
-end  
+@inline logαpdf(d::DirichletMultPredictive, x::AbstractVector) = d.lgsα_slgα + sum(lgamma, d.α .+ x) - lgamma(sum(x) + d.sα)
 
-function logαpdf(d::DirichletMultPredictive{T},x::DPSparseVector) where T
+function logαpdf(d::DirichletMultPredictive{T}, x::DPSparseVector) where T
     # log predictive probability of xx given other data items in the component
     # log p(xi|x_1,...,x_n)
     n     = sum(x)

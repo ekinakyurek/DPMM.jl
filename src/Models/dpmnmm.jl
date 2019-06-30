@@ -2,69 +2,70 @@
    `DPMNMM{T<:Real,D} <: AbstractDPModel{T,D}`
     Class for DP Multinomial Mixture Models
 """
-struct DPMNMM{T<:Real,D} <: AbstractDPModel{T,D}
-    θprior::DirichletFast{T}
+struct DPMNMM{T<:Real,D,Pr<:DirichletFast} <: AbstractDPModel{T,D}
+    θprior::Pr
     α::T
 end
 @inline prior(m::DPMNMM) = m.θprior
-function DPMNMM(X::AbstractMatrix{<:Integer}; α::Real=1, eltype=Float64)
-    DPMNMM{eltype}(eltype(α), sumcol(X) .+ eltype(1))
+DPMNMM(X::AbstractMatrix{<:Integer}; α::Real=1.0) = DPMNMM(Float64(α), Float64.(sumcol(X) .+ 1))
+@inline function DPMNMM(α::T, alphas::AbstractVector{<:Real}) where T
+    prior = DirichletFast(alphas)
+    DPMNMM{T,length(alphas),typeof(prior)}(prior,α)
 end
-@inline DPMNMM{T,D}(α::Real) where {T<:Real,D} = DPMNMM{T,dim}(DirichletFast{T}(ones(D),T(α)))
-@inline DPMNMM{T}(α::Real, alphas::AbstractVector{T}) where T<:Real = DPMNMM{T,length(alphas)}(DirichletFast{T}(alphas),T(α))
 
 """
-   ` DPMNMMStats{T<:Real} <: SufficientStats`
+   ` DPMNMMStats <: SufficientStats`
     Sufficient statistics for Multinomial Models
 """
-@inline stattype(::DirichletFast{T}) where T = DPMNMMStats{T}
+@inline stattype(::DirichletFast) = DPMNMMStats
 
-struct DPMNMMStats{T<:Real} <: SufficientStats
+struct DPMNMMStats <: SufficientStats
     s::Vector{Int}
     n::Int
 end
 
-@inline suffstats(m::DirichletFast{T}) where T<:Real =
-    DPMNMMStats{T}(zeros(Int,length(m),0))
+@inline suffstats(m::DirichletFast) =
+    DPMNMMStats(zeros(Int,length(m),0),0)
 
-@inline suffstats(m::DirichletFast{T},X::AbstractMatrix{Int}) where T<:Real =
-    DPMNMMStats{T}(sumcol(X),size(X,2))
+@inline suffstats(m::DirichletFast, X::AbstractMatrix{Int}) =
+    DPMNMMStats(sumcol(X),size(X,2))
 
-@inline suffstats(m::DirichletFast{T},x::AbstractVector{Int}) where T<:Real =
-    DPMNMMStats{T}(x,1)
+@inline suffstats(m::DirichletFast, x::AbstractVector{Int}) =
+    DPMNMMStats(Vector(x),1)
 
-@inline function updatestats(m::DPMNMMStats{T},x::AbstractVector{Int}) where T<:Real
-    DPMNMMStats{T}(add!(m.s,x),m.n+1)
+@inline function updatestats(m::DPMNMMStats, x::AbstractVector{Int})
+    DPMNMMStats(add!(m.s,x),m.n+1)
 end
 
-@inline function +(s1::DPMNMMStats{T},s2::DPMNMMStats{T}) where T<:Real
-    DPMNMMStats{T}(s1.s+s2.s,s1.n+s2.n)
+@inline function +(s1::DPMNMMStats,s2::DPMNMMStats)
+    DPMNMMStats(s1.s+s2.s,s1.n+s2.n)
 end
 
-@inline function -(s1::DPMNMMStats{T},s2::DPMNMMStats{T}) where T<:Real
-    DPMNMMStats{T}(s1.s-s2.s,s1.n-s2.n)
+@inline function -(s1::DPMNMMStats,s2::DPMNMMStats)
+    DPMNMMStats(s1.s-s2.s,s1.n-s2.n)
 end
 
-@inline function updatestats(m::DPMNMMStats{T},X::AbstractMatrix{Int}) where T<:Real
-    DPMNMMStats{T}(add!(m.s,sumcol(X)), m.n+size(X,2))
+@inline function updatestats(m::DPMNMMStats,X::AbstractMatrix{Int})
+    DPMNMMStats(add!(m.s,sumcol(X)), m.n+size(X,2))
 end
 
-@inline function downdatestats(m::DPMNMMStats{T}, x::AbstractVector{Int}) where T<:Real
-    DPMNMMStats{T}(substract!(m.s,x),m.n-1)
+@inline function downdatestats(m::DPMNMMStats, x::AbstractVector{Int})
+    DPMNMMStats(substract!(m.s,x),m.n-1)
 end
 
-@inline function downdatestats(m::DPMNMMStats{T},X::AbstractMatrix{Int}) where T<:Real
-    DPMNMMStats{T}(substract!(m.s,sumcol(X)), m.n-size(X,2))
+@inline function downdatestats(m::DPMNMMStats,X::AbstractMatrix{Int})
+    DPMNMMStats(substract!(m.s,sumcol(X)), m.n-size(X,2))
 end
 
-@inline _posterior(m::DirichletFast{V}, T::DPMNMMStats{V}) where V<:Real = m.α + T.s
+@inline _posterior(m::DirichletFast, T::DPMNMMStats)  = m.α + T.s
 @inline posterior(m::DirichletFast) = m.α
-@inline posterior_predictive(m::DirichletFast{T}) where T<:Real = DirichletMultPredictive(m.α)
+@inline posterior_predictive(m::DirichletFast)= DirichletMultPredictive(m.α)
 
-@inline posterior(m::DirichletFast{V}, T::DPMNMMStats{V}) where V<:Real =
-    T.n!=0 ? DirichletFast{V}(_posterior(m,T)) : m
-@inline posterior_predictive(m::DirichletFast{V},T::DPMNMMStats{V}) where V<:Real =
-    T.n != 0 ? DirichletMultPredictive{V}(_posterior(m,T)) : posterior_predictive(m)
+@inline posterior(m::DirichletFast, T::DPMNMMStats) =
+    T.n!=0 ? DirichletFast(_posterior(m,T)) : m
+
+@inline posterior_predictive(m::DirichletFast,T::DPMNMMStats) =
+    T.n != 0 ? DirichletMultPredictive(_posterior(m,T)) : posterior_predictive(m)
 
 @inline downdate_predictive(p::DirichletFast, m::DirichletMultPredictive, x::AbstractVector, n::Int) =
     DirichletMultPredictive(substract!(m.α,x))
