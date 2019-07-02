@@ -11,7 +11,7 @@ end
 @inline prior(m::DPGMM) = m.θprior
 
 function DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real
-    DPGMM{T}(T(α), vec(mean(X,dims=2)),(X*X')/size(X,2))
+    DPGMM{T}(T(α), vec(mean(X,dims=2)),Matrix{T}(I,size(X,1),size(X,1)))
 end
 
 @inline DPGMM{T,D}(α::Real) where {T<:Real,D} =
