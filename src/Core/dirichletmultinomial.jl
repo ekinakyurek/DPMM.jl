@@ -35,7 +35,7 @@ function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVec
          @inbounds s += (x[i] = rand(rng,Gamma(α[i])))
     end
     lgs = log(s)
-    @simd for i in eachindex(α)
+    @simd for i in eachindex(x)
          @inbounds x[i] = log(x[i]) - lgs
     end
     MultinomialFast(x)
@@ -74,9 +74,11 @@ params(d::MultinomialFast) = (d.logp,)
 function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     logp  = d.logp
     nzval = nonzeros(x)
+    nzind = nonzeroinds(x)
     s     = T(0)
-    @simd for l in enumerate(x.nzind)
-        @inbounds s += logp[last(l)]*nzval[first(l)]
+    @simd for i in eachindex(nzval)
+        @inbounds index = nzind[i]
+        @inbounds s += logp[index]*nzval[i]
     end
     return s
 end
@@ -136,18 +138,19 @@ partype(d::DirichletMultPredictive{T}) where {T<:Real} = T
 
 @inline logαpdf(d::DirichletMultPredictive, x::AbstractVector) = d.lgsα_slgα + sum(lgamma, d.α .+ x) - lgamma(sum(x) + d.sα)
 
-function logαpdf(d::DirichletMultPredictive{T}, x::DPSparseVector) where T
+@inline function logαpdf(d::DirichletMultPredictive, x::DPSparseVector) 
     # log predictive probability of xx given other data items in the component
     # log p(xi|x_1,...,x_n)
-    n     = sum(x)
-    sα    = sum(d.α)
+    #n     = sum(x)
+    #sα    = sum(d.α)
     dαpx  = add!(copy(d.α),x)
-    onepx = add!(ones(T,length(d)),x)
+    #onepx = add!(ones(T,length(d)),x)
 
-    return lgamma(n+1) -
-           sum(lgamma,onepx) +
-           lgamma(sα) -
-           sum(lgamma,d.α) +
-           sum(lgamma,dαpx)-
-           lgamma(n + sα)
+    return d.lgsα_slgα +
+    #lgamma(n+1) -
+           #sum(lgamma,onepx) +
+           #lgamma(sα) -
+           #sum(lgamma,d.α) +
+           sum(lgamma,dαpx) -
+           lgamma(sum(x) + d.sα)
 end

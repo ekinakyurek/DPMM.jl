@@ -1,3 +1,4 @@
+import SparseArrays: nnz, nonzeroinds, nonzeros
 """
     DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
 
@@ -16,6 +17,16 @@ struct DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
             throw(ArgumentError("index and value vectors must be the same length"))
         new(convert(Int, n), nzind, nzval)
     end
+end
+
+function Vector(s::DPSparseVector{Tv,<:Any}) where Tv
+    nzval = nonzeros(s)
+    nzind = nonzeroinds(s)
+    x = zeros(Tv,nnz(s))
+    for i in eachindex(nzval)
+        @inbounds x[nzind[i]] =nzval[i]
+    end
+    return x
 end
 
 DPSparseVector(n::Integer, nzind::Vector{Ti}, nzval::Vector{Tv}) where {Tv,Ti} =
@@ -55,6 +66,7 @@ end
 @inline getindex(X::DPSparseMatrix, ind1::Integer, ind2::Integer) = X.data[ind2][ind1]
 @inline nonzeroinds(x::DPSparseVector) = x.nzind
 @inline nonzeros(x::DPSparseVector)    = x.nzval
+@inline nnz(x::DPSparseVector)    = x.n
 
 function getindex(x::DPSparseVector{Tv,<:Any}, ind::Integer) where Tv
     inds = x.nzind

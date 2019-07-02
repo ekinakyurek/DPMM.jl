@@ -59,12 +59,12 @@ const DEFAULT_ALGO = SplitMergeAlgorithm
 #### Serial
 ###
 function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericClusters,
-                            cluster0; merge::Bool=true, T=10, scene=nothing)
+                           cluster0; merge::Bool=true, T=10, scene=nothing)
+    maybe_split = maybeSplit(clusters)
     for t in 1:T
         record!(scene,labels,t)
         logπs          = logmixture_πs(model.α,clusters)
         logsπs         = logsubcluster_πs(model.α/2,clusters)
-        maybe_split    = maybeSplit(clusters)
         @inbounds for i=1:size(X,2) # make parallel
             x = view(X,:,i)
             probs = RestrictedClusterProbs(logπs,clusters,x)
@@ -79,6 +79,7 @@ function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericCl
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
             materialize_merges!(model, labels, clusters, will_merge)
         end
+        maybeSplit(clusters,maybe_split)
     end
 end
 
@@ -110,6 +111,16 @@ function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster})
         s[k]  = llavg != -Inf && llavg-last(c.llh_hist)<1e-2
     end
     return s
+end
+
+function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster}, maybe_split::Dict{Int,Bool})
+    for (k,c) in clusters
+        if !get(maybe_split,k,false)
+            llavg = sum(c.llh_hist)/length(c.llh_hist)
+            maybe_split[k]  = llavg != -Inf && llavg-last(c.llh_hist)<1e-2
+        end
+    end
+    return maybe_split
 end
 
 """
@@ -325,6 +336,7 @@ function update_clusters!(m::AbstractDPModel, clusters::Dict, stats::Dict{Int,<:
 end
 
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
+    maybe_split = maybeSplit(clusters)
     for t in 1:T
         record!(scene,labels,t)
         logπs          = logmixture_πs(model.α,clusters)
@@ -344,6 +356,7 @@ function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArra
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
             materialize_merges!(model, labels, clusters, will_merge)
         end
+         maybe_split = maybeSplit(clusters, maybe_split)
     end
 end
 
