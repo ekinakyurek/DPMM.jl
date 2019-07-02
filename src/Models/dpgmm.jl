@@ -46,7 +46,7 @@ end
     DPGMMStats{T}(vec(sum(X,dims=2)),X*X',size(X,2))
 
 @inline suffstats(m::NormalWishart{T},x::AbstractVector{T}) where T<:Real =
-    DPGMMStats{T}(x,x*x',1)
+    DPGMMStats{T}(Vector(x),x*x',1)
 
 @inline function +(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
     DPGMMStats{T}(s1.nμ .+ s2.nμ,s1.S .+ s2.S,s1.n+s2.n)
@@ -59,7 +59,7 @@ end
 @inline function updatestats(m::DPGMMStats{T},x::AbstractVector{T}) where T<:Real
     m.nμ .+= x
     m.S  .+= x*x'
-    DPGMMStats{T}(m.nμ,m.S,m.n+1)
+    DPGMMStats{T}(m.nμ .+ x, m.S .+  x*x',m.n+1)
 end
 
 @inline function updatestats(m::DPGMMStats{T},X::AbstractMatrix{T}) where T<:Real

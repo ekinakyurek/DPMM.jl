@@ -113,8 +113,8 @@ end
 @inline get_cluster_inds(key::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
     findall(l->l[1]==key,labels)
 
-@inline get_cluster_inds(k1::Int,k2::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
-    findall(l->l[1]==k1 || l[2]==k2,labels)
+@inline get_cluster_inds(k1::Int, k2::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
+    findall(l->l[1]==k1 || l[1]==k2,labels)
 
 @inline get_left_inds(indices::Vector{Int}, labels::AbstractVector{Tuple{Int,Bool}}) =
     filter(i->labels[i][2],indices)
