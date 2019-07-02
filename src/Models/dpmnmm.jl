@@ -7,7 +7,7 @@ struct DPMNMM{T<:Real,D,Pr<:DirichletFast} <: AbstractDPModel{T,D}
     α::T
 end
 @inline prior(m::DPMNMM) = m.θprior
-DPMNMM(X::AbstractMatrix{<:Integer}; α::Real=1.0) = DPMNMM(Float64(α), Float64.(sumcol(X) .+ 1))
+DPMNMM(X::AbstractMatrix{<:Integer}; α::Real=1.0) = DPMNMM(Float64(α), ones(size(X,1)))#Float64.(sumcol(X) .+ 1))
 @inline function DPMNMM(α::T, alphas::AbstractVector{<:Real}) where T
     prior = DirichletFast(alphas)
     DPMNMM{T,length(alphas),typeof(prior)}(prior,α)
