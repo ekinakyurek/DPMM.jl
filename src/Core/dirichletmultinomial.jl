@@ -43,7 +43,7 @@ end
 
 @inline rand(d::DirichletCanon) = _rand!(GLOBAL_RNG,d,similar(d.alpha))
 
-@inline lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)  = 
+@inline lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)  =
     lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
 
 
@@ -81,6 +81,7 @@ function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
         @inbounds s += logp[index]*nzval[i]
     end
     return s
+    #_logpdf(d,x)
 end
 
 function logαpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
@@ -92,15 +93,14 @@ function logαpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
     return s
 end
 
-function _logpdf(d::MultinomialFast{T}, x::AbstractVector{T}) where T<:Real
+function _logpdf(d::MultinomialFast{T}, x::AbstractVector) where T<:Real
     n = sum(x)
     logp = d.logp
-    S = partype(d)
-    s = S(lgamma(n + 1))
+    s = T(lgamma(n + 1))
     for i in eachindex(x)
         @inbounds xi = x[i]
         @inbounds p_i = logp[i]
-        s -= S(lgamma(S(xi) + 1))
+        s -= T(lgamma(xi + 1))
         s += xi * p_i
     end
     return s
@@ -109,12 +109,11 @@ end
 function _logpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     n = sum(x)
     logp = d.logp
-    S = partype(d)
-    s = S(lgamma(n + 1))
+    s = T(lgamma(n + 1))
     for (i,index) in enumerate(x.nzind)
         @inbounds xi = x.nzval[i]
         @inbounds p_i = logp[index]
-        s -= S(lgamma(S(xi) + 1))
+        s -= T(lgamma(xi + 1))
         s += xi * p_i
     end
     return s
@@ -138,7 +137,7 @@ partype(d::DirichletMultPredictive{T}) where {T<:Real} = T
 
 @inline logαpdf(d::DirichletMultPredictive, x::AbstractVector) = d.lgsα_slgα + sum(lgamma, d.α .+ x) - lgamma(sum(x) + d.sα)
 
-@inline function logαpdf(d::DirichletMultPredictive, x::DPSparseVector) 
+@inline function logαpdf(d::DirichletMultPredictive, x::DPSparseVector)
     # log predictive probability of xx given other data items in the component
     # log p(xi|x_1,...,x_n)
     #n     = sum(x)

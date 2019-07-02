@@ -1,7 +1,6 @@
 ###
 #### Interface
 ###
-
 """
     SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
@@ -45,7 +44,7 @@ run!(algo::SplitMergeAlgorithm{false,M}, X, args...; o...) where M =
 run!(algo::SplitMergeAlgorithm{true,M}, X, args...;o...) where M =
     splitmerge_gibbs_parallel!(algo.model,X,args...;merge=M, o...)
 
-random_labels(X,algo::SplitMergeAlgorithm)  = 
+random_labels(X,algo::SplitMergeAlgorithm)  =
     map(l->(l,rand()>0.5),rand(1:algo.ninit,size(X,2)))
 
 create_clusters(X, algo::SplitMergeAlgorithm, labels) =
@@ -73,7 +72,7 @@ function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericCl
         end
         update_clusters!(model,X,clusters,labels)
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
-        materialize_splits!(model, X, labels, clusters, will_split)
+        materialize_splits!(model, X, labels, clusters, will_split, maybe_split)
         gc_clusters!(clusters, maybe_split)
         if merge
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
@@ -121,6 +120,7 @@ function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster}, maybe_split::Dict{I
         end
     end
     return maybe_split
+
 end
 
 """
@@ -174,8 +174,8 @@ function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
                     lgamma(s.n)-lgamma(s.n+α)+
                     lgamma(s1.n+0.5*α)-lgamma(s1.n) +
                     lgamma(s2.n+0.5*α)-lgamma(s2.n)+
-                    lmllh(prior,p,s.n)-lmllh(prior,c1.post,s1.n)-
-                    lmllh(prior,c2.post,s2.n)
+                    lmllh(prior,p,s.n)-lmllh(prior,c1.post,s1.n)
+                    -lmllh(prior,c2.post,s2.n)
 
             if logH>0 || logH > log(rand())
                 merge_with[k2] = k1
@@ -193,8 +193,16 @@ function propose_splits!(m::AbstractDPModel, X::AbstractMatrix, labels::Abstract
         if maybe_split[k]
             if c.nr == 0 || c.nl == 0
                 c = reset_cluster!(m,X,labels,clusters,k)
+                maybe_split[k] = false
             end
-            logH = logα+lgamma(population(c,Val(false)))+lgamma(population(c,Val(true)))-lgamma(population(c))+c.llhs[2]+c.llhs[3]-c.llhs[1]
+
+            logH = logα+lgamma(population(c,Val(false)))+
+                        lgamma(population(c,Val(true)))-
+                        lgamma(population(c))+
+                        c.llhs[2]+
+                        c.llhs[3]-
+                        c.llhs[1]
+
             will_split[k] = (logH>0 || logH>log(rand()))
         else
             will_split[k] = false
@@ -222,17 +230,23 @@ function get_new_keys(will_split::Dict{Int,Bool})
     kmax  = maximum(keys(will_split))
     nkeys = Dict{Int,Int}()
     for (k,ws) in will_split
-        nkeys[k] = ws ? (kmax+=1) : k
+        if ws
+            nkeys[k] = kmax+=1
+        else
+            nkeys[k] = k
+        end
     end
     return nkeys
 end
 
-function materialize_splits!(model, X, labels, clusters, will_split)
+function materialize_splits!(model, X, labels, clusters, will_split, maybe_split)
     new_keys  = get_new_keys(will_split)
     old_keys  = collect(keys(clusters))
     for k in old_keys
         if will_split[k]
             newkey = new_keys[k]
+            maybe_split[k] = false
+            maybe_split[newkey] = false
             clusters[k], clusters[newkey] = split_cluster!(model, X, labels, clusters[k], k, newkey)
         else
             c = clusters[k]
@@ -263,10 +277,6 @@ function gc_clusters!(clusters, maybe_split)
     for (k,c) in clusters
         if c.n == 0
             delete!(clusters,k)
-        else
-            if !haskey(maybe_split,k)
-                maybe_split[k] = false
-            end
         end
     end
 end
@@ -350,13 +360,13 @@ function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArra
         end
         update_clusters!(model, clusters, gather_stats(stats))
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
-        materialize_splits!(model, X, labels, clusters, will_split)
+        materialize_splits!(model, X, labels, clusters, will_split, maybe_split)
         gc_clusters!(clusters, maybe_split)
         if merge
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
             materialize_merges!(model, labels, clusters, will_merge)
         end
-         maybe_split = maybeSplit(clusters, maybe_split)
+        maybeSplit(clusters, maybe_split)
     end
 end
 

@@ -97,16 +97,13 @@ function generate_gaussian_data(N::Int64, D::Int64, K::Int64)
 end
 
 function generate_multinomial_data(N::Int64, D::Int64, K::Int64)
-	
     data = zeros(Int,N,D)
     for k = 1:K
         tpi = rand(Dirichlet(ones(D)*0.05))
-
         istart = round(Int64, floor((N/K)*(k-1)) + 1)
         istop = round(Int64, floor((N/K)*k))
 
         num_words = rand(1:1000, istop-istart+1, 1)
-       
         for idx = istart:istop
             num_words = rand(1:1000)
             data[idx,:] =  rand(Multinomial(num_words, tpi))

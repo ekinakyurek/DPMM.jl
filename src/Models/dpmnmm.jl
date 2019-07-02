@@ -25,7 +25,7 @@ struct DPMNMMStats <: SufficientStats
 end
 
 @inline suffstats(m::DirichletFast) =
-    DPMNMMStats(zeros(Int,length(m),0),0)
+    DPMNMMStats(zeros(Int,length(m)),0)
 
 @inline suffstats(m::DirichletFast, X::AbstractMatrix{Int}) =
     DPMNMMStats(sumcol(X),size(X,2))
@@ -62,7 +62,7 @@ end
 @inline posterior_predictive(m::DirichletFast)= DirichletMultPredictive(m.α)
 
 @inline posterior(m::DirichletFast, T::DPMNMMStats) =
-    T.n!=0 ? DirichletFast(_posterior(m,T)) : m
+    T.n != 0 ? DirichletFast(_posterior(m,T)) : m
 
 @inline posterior_predictive(m::DirichletFast,T::DPMNMMStats) =
     T.n != 0 ? DirichletMultPredictive(_posterior(m,T)) : posterior_predictive(m)
