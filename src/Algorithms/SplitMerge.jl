@@ -120,7 +120,6 @@ function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster}, maybe_split::Dict{I
         end
     end
     return maybe_split
-
 end
 
 """
@@ -155,8 +154,8 @@ end
 function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
                         X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},
                         maySplit::Dict{Int,Bool}) where T
-    α    = m.α
-    logα = log(α)
+    α = m.α
+    cnstnt = -log(α)+lgamma(α)-2*lgamma(0.5*α)-log(100)
     merge_with = Dict{Int,Int}()
     ckeys = collect(keys(clusters))
     for i=1:length(ckeys)
@@ -170,7 +169,7 @@ function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
             s = s1+s2
             p  = posterior(m,s)
             prior = m.θprior
-            logH = -logα+lgamma(α)-2*lgamma(0.5*α)-log(100)+
+            logH =  cnstnt +
                     lgamma(s.n)-lgamma(s.n+α)+
                     lgamma(s1.n+0.5*α)-lgamma(s1.n) +
                     lgamma(s2.n+0.5*α)-lgamma(s2.n)+

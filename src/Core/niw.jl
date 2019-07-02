@@ -12,11 +12,11 @@ struct NormalWishart{T<:Real,S<:AbstractPDMat} <: ContinuousUnivariateDistributi
     λ::T  # This scales precision (inverse covariance)
     Ψ::S
     ν::T
+    logdetΨ::T
     function NormalWishart{T}(μ::Vector{T}, λ::T, Ψ::AbstractPDMat{T}, ν::T) where T<:Real
-        new{T,typeof(Ψ)}(μ, λ, Ψ, ν)
+        new{T,typeof(Ψ)}(μ, λ, Ψ, ν, logdet(Ψ))
     end
 end
-
 @inline length(d::NormalWishart) = length(d.μ)
 
 function NormalWishart(μ::Vector{U}, λ::Real,
@@ -78,7 +78,7 @@ function lmllh(prior::NormalWishart{T}, posterior::NormalWishart{T},  n::Int) wh
     D = length(prior)
     s = D*(D-1)/4*logpi
     return -n*D/2*logpi + mv_lgamma(s, posterior.ν/2, D) - mv_lgamma(s, prior.ν/2, D) +
-            prior.ν/2*logdet(prior.Ψ) - posterior.ν/2*logdet(posterior.Ψ) +
+            prior.ν/2*prior.logdetΨ - posterior.ν/2*posterior.logdetΨ +
             D/2*(log(prior.λ)-log(posterior.λ))
 end
 
