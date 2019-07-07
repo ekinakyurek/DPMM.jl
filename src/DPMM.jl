@@ -16,7 +16,7 @@ import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon,
                       mean, cov, params, invcov, logdetcov, sqmahal, sqmahal!,
                       partype, unwhiten_winv!,log2π, mvnormal_c0, _logpdf, lgamma,
                       xlogy, NoArgCheck, suffstats, SufficientStats, GenericMvTDist,
-                      AliasTable, GLOBAL_RNG
+                      AliasTable, GLOBAL_RNG, ZeroVector
 
 import PDMats: unwhiten!, add!, quad, quad!
 

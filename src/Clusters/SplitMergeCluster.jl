@@ -58,10 +58,14 @@ function SplitMergeCluster(m::AbstractDPModel{<:Any,D},
                            sl::SufficientStats) where D
     prior = m.θprior
     ps, psr, psl  = posterior(prior,s), posterior(prior,sr), posterior(prior,sl)
-
     llhs = (lmllh(prior, ps, s.n), lmllh(prior, psr, sr.n), lmllh(prior, psl, sl.n))
-    SplitMergeCluster(s.n, sr.n, sl.n, s, rand(ps), rand(psr), rand(psl),
-                      ps, psr, psl, llhs, (-Inf,-Inf,-Inf,llhs[2]+llhs[3]), prior)
+    SplitMergeCluster(s.n, sr.n, sl.n,
+                      s,
+                      rand(ps), rand(psr), rand(psl),
+                      ps, psr, psl,
+                      llhs,
+                      (-Inf,-Inf,-Inf,llhs[2]+llhs[3]),
+                      prior)
 end
 
 # This method is specifically designed for updating an existing cluster
@@ -73,35 +77,40 @@ function SplitMergeCluster(c::SplitMergeCluster,
     prior = c.prior
     ps, psr, psl  = posterior(prior,s), posterior(prior,sr), posterior(prior,sl)
     llhs = (lmllh(prior, ps,  s.n), lmllh(prior, psr, sr.n), lmllh(prior, psl, sl.n))
-    SplitMergeCluster(s.n, sr.n, sl.n, s, c.sampled, c.right, c.left, ps, psr, psl,
-                      llhs, (llh_hist[2:end]...,llhs[2]+llhs[3]), prior)
+    SplitMergeCluster(s.n, sr.n, sl.n,
+                      s,
+                      c.sampled, c.right, c.left,
+                      ps, psr, psl,
+                      llhs,
+                      (llh_hist[2],llh_hist[3],llh_hist[4],llhs[2]+llhs[3]),
+                      prior)
 end
 
 function SplitMergeClusters(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
-    uniquez   = unique((l[1] for l in z))
+    uniquez   = unique((first(l) for l in z))
     Dict(map(uniquez) do k
-            indices = get_cluster_inds(k,z)
-            sr = suffstats(model,X[:,get_right_inds(indices,z)])
-            sl = suffstats(model,X[:,get_left_inds(indices,z)])
-            (k,SplitMergeCluster(model,sr+sl,sr,sl))
-        end)
+         indices = get_cluster_inds(k,z)
+         sr = suffstats(model,X[:,get_right_inds(indices,z)])
+         sl = suffstats(model,X[:,get_left_inds(indices,z)])
+         (k,SplitMergeCluster(model,sr+sl,sr,sl))
+         end)
 end
 
 function SuffStats(model::AbstractDPModel, X::AbstractMatrix, z::AbstractVector{Tuple{Int,Bool}})
-    uniquez   = unique((l[1] for l in z))
+    uniquez = unique((first(l) for l in z))
     Dict(map(uniquez) do k
-            indices = get_cluster_inds(k,z)
-            sr = suffstats(model,X[:,get_right_inds(indices,z)])
-            sl = suffstats(model,X[:,get_left_inds(indices,z)])
-            (k, (sr,sl))
-        end)
+         indices = get_cluster_inds(k,z)
+         sr = suffstats(model,X[:,get_right_inds(indices,z)])
+         sl = suffstats(model,X[:,get_left_inds(indices,z)])
+         (k, (sr,sl))
+         end)
 end
 
 @inline population(m::SplitMergeCluster) = m.n
 @inline population(m::SplitMergeCluster, ::Val{false}) = m.nr
 @inline population(m::SplitMergeCluster, ::Val{true}) = m.nl
 
-@inline logαpdf(m::SplitMergeCluster, x)      = logαpdf(m.sampled,x)
+@inline logαpdf(m::SplitMergeCluster, x)  = logαpdf(m.sampled,x)
 @inline logαpdf(m::SplitMergeCluster, x, ::Val{false}) = logαpdf(m.right,x)
 @inline logαpdf(m::SplitMergeCluster, x, ::Val{true})  = logαpdf(m.left,x)
 
@@ -111,10 +120,10 @@ end
 @inline posterior(m::SplitMergeCluster) = m.post
 # Specific `find` functions
 @inline get_cluster_inds(key::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
-    findall(l->l[1]==key,labels)
+    findall(l->first(l)==key,labels)
 
 @inline get_cluster_inds(k1::Int, k2::Int, labels::AbstractVector{Tuple{Int,Bool}}) =
-    findall(l->l[1]==k1 || l[1]==k2,labels)
+    findall(l->first(l)==k1 || first(l)==k2,labels)
 
 @inline get_left_inds(indices::Vector{Int}, labels::AbstractVector{Tuple{Int,Bool}}) =
     filter(i->labels[i][2],indices)

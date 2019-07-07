@@ -1,8 +1,8 @@
 """
-   DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
+       DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
 
-   Class for DP Gaussian Mixture Models
-"""
+       Class for DP Gaussian Mixture Models
+    """
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
     θprior::NormalWishart{T}
     α::T
@@ -10,17 +10,17 @@ end
 
 @inline prior(m::DPGMM) = m.θprior
 
-function DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real
-    DPGMM{T}(T(α), vec(mean(X,dims=2)),Matrix{T}(I,size(X,1),size(X,1))
-end
+DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real =
+    DPGMM{T}(T(α), vec(mean(X,dims=2)), X*X'/size(X,2))
+    #DPGMM{T}(T(α), vec(mean(X,dims=2)),Matrix{T}(I,size(X,1),size(X,1)))
 
-@inline DPGMM{T,D}(α::Real) where {T<:Real,D} =
+DPGMM{T,D}(α::Real) where {T<:Real,D} =
     DPGMM{T,dim}(NormalWishart{T}(D),T(α))
 
-@inline DPGMM{T}(α::Real, μ0::AbstractVector{T}) where T<:Real =
+DPGMM{T}(α::Real, μ0::AbstractVector{T}) where T<:Real =
     DPGMM{T,length(μ0)}(NormalWishart{T}(μ0),T(α))
 
-@inline DPGMM{T}(α::Real, μ0::AbstractVector{T}, Σ0::AbstractMatrix{T}) where T<:Real =
+DPGMM{T}(α::Real, μ0::AbstractVector{T}, Σ0::AbstractMatrix{T}) where T<:Real =
     DPGMM{T,length(μ0)}(NormalWishart{T}(μ0,Σ0), T(α))
 
 @inline stattype(::NormalWishart{T}) where T = DPGMMStats{T}
@@ -28,7 +28,7 @@ end
 
 """
     DPGMMStats{T<:Real} <: SufficientStats
-
+        
     Sufficient statistics for Gaussian Models
 """
 struct DPGMMStats{T<:Real} <: SufficientStats
@@ -37,29 +37,28 @@ struct DPGMMStats{T<:Real} <: SufficientStats
     n::Int
 end
 
-@inline function suffstats(m::NormalWishart{T}) where T
+function suffstats(m::NormalWishart{T}) where T
     D = length(m)
-    DPGMMStats{T}(zeros(T,D),zeros(T,D,D),0)
+    DPGMMStats(zeros(T,D),zeros(T,D,D),0)
 end
 
-@inline suffstats(m::NormalWishart{T},X::AbstractMatrix{T}) where T<:Real =
-    DPGMMStats{T}(vec(sum(X,dims=2)),X*X',size(X,2))
+@inline suffstats(m::NormalWishart,X::AbstractMatrix) =
+    DPGMMStats(vec(sum(X,dims=2)),X*X',size(X,2))
 
-@inline suffstats(m::NormalWishart{T},x::AbstractVector{T}) where T<:Real =
-    DPGMMStats{T}(Vector(x),x*x',1)
+@inline suffstats(m::NormalWishart,x::AbstractVector) =
+    DPGMMStats(Vector(x),x*x',1)
 
-@inline function +(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
-    DPGMMStats{T}(s1.nμ .+ s2.nμ,s1.S .+ s2.S,s1.n+s2.n)
-end
+@inline +(s1::DPGMMStats,s2::DPGMMStats) =
+    DPGMMStats(s1.nμ .+ s2.nμ,s1.S .+ s2.S,s1.n + s2.n)
 
-@inline function -(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
-    DPGMMStats{T}(s1.nμ .- s2.nμ,s1.S .- s2.S,s1.n-s2.n)
-end
+# @inline function -(s1::DPGMMStats{T},s2::DPGMMStats{T}) where T<:Real
+#     DPGMMStats{T}(s1.nμ .- s2.nμ,s1.S .- s2.S,s1.n-s2.n)
+# end
 
 @inline function updatestats(m::DPGMMStats{T},x::AbstractVector{T}) where T<:Real
     m.nμ .+= x
     m.S  .+= x*x'
-    DPGMMStats{T}(m.nμ .+ x, m.S .+  x*x',m.n+1)
+    DPGMMStats{T}(m.nμ ,m.S, m.n+1)
 end
 
 @inline function updatestats(m::DPGMMStats{T},X::AbstractMatrix{T}) where T<:Real
@@ -83,8 +82,9 @@ end
 function _posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real
     λn   = m.λ + V(T.n)
     νn   = m.ν + V(T.n)
-    μn   = (m.λ * m.μ .+ T.nμ)/λn
-    Ψn   = m.Ψ + T.S .+ m.λ * (m.μ * m.μ') - λn * (μn * μn')
+    λμ   = m.λ * m.μ
+    μn   = (λμ .+ T.nμ) ./ λn
+    Ψn   = m.Ψ + T.S + λμ * m.μ' - λn * (μn * μn')
     return (μn,λn,Ψn,νn)
 end
 
@@ -106,7 +106,7 @@ end
 end
 
 
-@inline posterior(m::NormalWishart{V},T::DPGMMStats{V}) where V<:Real =
+@inline posterior(m::NormalWishart,T::DPGMMStats) =
     T.n!=0 ? NormalWishart(_posterior(m,T)...) : m
 
 @inline function downdate_predictive(p::NormalWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}

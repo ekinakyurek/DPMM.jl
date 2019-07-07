@@ -42,6 +42,13 @@ function _rand!(rng::Random.MersenneTwister, d::DirichletFast{T}, x::AbstractVec
 end
 
 @inline rand(d::DirichletCanon) = _rand!(GLOBAL_RNG,d,similar(d.alpha))
+@inline function randlogdir(rng::Random.MersenneTwister, α1::T, α2::T) where T<:Real
+    s1  = rand(rng,Gamma(α1))
+    s2  = rand(rng,Gamma(α2))
+    lgs = log(s1+s2)
+    return (log(s1)-lgs,log(s2)-lgs)
+end
+
 
 @inline lmllh(prior::DirichletFast, posterior::DirichletFast, n::Int)  =
     lgamma(sum(prior.α))-lgamma(sum(posterior.α)) + sum(lgamma.(posterior.α) .- lgamma.(prior.α))
@@ -76,7 +83,7 @@ function logαpdf(d::MultinomialFast{T}, x::DPSparseVector) where T<:Real
     nzval = nonzeros(x)
     nzind = nonzeroinds(x)
     s     = T(0)
-    @simd for i in eachindex(nzval)
+    for i in eachindex(nzval)
         @inbounds index = nzind[i]
         @inbounds s += logp[index]*nzval[i]
     end
