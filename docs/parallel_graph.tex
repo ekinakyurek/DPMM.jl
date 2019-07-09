@@ -1,0 +1,121 @@
+\begin{figure}[ht]
+  \begin{center}
+    \begin{tabular*}{1.5\textwidth}{ll}
+\begin{tikzpicture}[
+  node distance=2.5cm,
+  squarednode/.style={rectangle, draw=black!60, fill=white, thick, minimum size=10mm},
+  every edge/.style={  % Sets the properties for each transition
+            draw,
+           ->,>=stealth,     % Makes edges directed with bold arrowheads
+           auto,
+           semithick}
+]
+  \node[squarednode] (M) {Master};
+  \node[squarednode] (M1) [below left=6cm and 4.5cm of M] {M1};
+  \node[squarednode] (M2) [below=6cm of M, right=2cm of M1] {M2};
+  \node[squarednode] (M3) [below=6cm of M, right=2cm of M2]  {M3};
+  \node[squarednode] (M4) [below=6cm of M, right=2cm of M3]  {M4};
+  
+  \node[squarednode] (W11) [below left=6cm and 4.5cm of M1]    {W11};
+  \node[squarednode] (W12) [below=6cm of M1, right=2cm of W11]  {W12};
+  \node[squarednode] (W13) [below=6cm of M1, right=2cm of W12]  {W13};
+  \node[squarednode] (W14) [below=6cm of M1, right=2cm of W13]  {W14};
+  
+  \node[squarednode]  (W21) [below left=6cm and 4.5cm of M2]    {W21};
+  \node[squarednode]  (W22) [below=6cm of M2, right=2cm of W21]  {W22};
+  \node[squarednode]  (W23) [below=6cm of M2, right=2cm of W22]  {W23};
+  \node[squarednode]  (W24) [below=6cm of M2, right=2cm of W23]  {W24};
+  
+    
+  \node[squarednode]  (W31) [below left=6cm and 4.5cm of M3]    {W31};
+  \node[squarednode]  (W32) [below=6cm of M3, right=2cm of W31]  {W32};
+  \node[squarednode]  (W33) [below=6cm of M3, right=2cm of W32]  {W33};
+  \node[squarednode]  (W34) [below=6cm of M3, right=2cm of W33]  {W34};
+  
+  \node[squarednode]  (W41) [below left=6cm and 4.5cm of M4]    {W41};
+  \node[squarednode]  (W42) [below=6cm of M4, right=2cm of W41]  {W42};
+  \node[squarednode]  (W43) [below=6cm of M4, right=2cm of W42]  {W43};
+  \node[squarednode]  (W44) [below=6cm of M4, right=2cm of W43]  {W44};
+  
+  
+  
+  \draw (M) edge  [bend left=-40] node[left=1mm] {params} (M1);
+  \draw (M) edge  [bend left=-20] node[] {params} (M2);
+  \draw (M) edge  [bend left=0] node[] {params} (M3);
+  \draw (M) edge  [bend left=20] node[] {params} (M4);
+  \draw (M1) edge [bend left=30] node[right=1mm] {$T_1$} (M);
+  \draw (M2) edge [bend left=10] node[left=3mm] {$T_2$} (M);
+  \draw (M3) edge [bend left=-10] node[left=3mm] {$T_3$} (M);
+  \draw (M4) edge [bend left=-10] node[right=1mm] {$T_4$} (M);
+  
+  
+  
+    
+  \draw (M1) edge  [bend left=-40] node[left=1mm] {params} (W11);
+  \draw (M1) edge  [bend left=-20] node[] {params} (W12);
+  \draw (M1) edge  [bend left=0] node[] {params} (W13);
+  \draw (M1) edge  [bend left=20] node[] {params} (W14);
+  \draw (W11) edge [bend left=30] node[right=1mm] {$T_1$} (M1);
+  \draw (W12) edge [bend left=10] node[left=3mm] {$T_2$} (M1);
+  \draw (W13) edge [bend left=-10] node[left=3mm] {$T_3$} (M1);
+  \draw (W14) edge [bend left=-10] node[right=1mm] {$T_4$} (M1);
+    
+  \draw (M2) edge  [bend left=-40] node[left=1mm] {params} (W21);
+  \draw (M2) edge  [bend left=-20] node[] {params} (W22);
+  \draw (M2) edge  [bend left=0] node[] {params} (W22);
+  \draw (M2) edge  [bend left=20] node[] {params} (W23);
+  \draw (W21) edge [bend left=30] node[right=1mm] {$T_1$} (M2);
+  \draw (W22) edge [bend left=10] node[left=3mm] {$T_2$} (M2);
+  \draw (W23) edge [bend left=-10] node[left=3mm] {$T_3$} (M2);
+  \draw (W24) edge [bend left=-10] node[right=1mm] {$T_4$} (M2);
+  
+      
+  \draw (M3) edge  [bend left=-40] node[left=1mm] {params} (W31);
+  \draw (M3) edge  [bend left=-20] node[] {params} (W32);
+  \draw (M3) edge  [bend left=0] node[] {params} (W32);
+  \draw (M3) edge  [bend left=20] node[] {params} (W33);
+  \draw (W31) edge [bend left=30] node[right=1mm] {$T_1$} (M3);
+  \draw (W32) edge [bend left=10] node[left=3mm] {$T_2$} (M3);
+  \draw (W33) edge [bend left=-10] node[left=3mm] {$T_3$} (M3);
+  \draw (W34) edge [bend left=-10] node[right=1mm] {$T_4$} (M3);
+  
+  \draw (M4) edge  [bend left=-40] node[left=1mm] {params} (W41);
+  \draw (M4) edge  [bend left=-20] node[] {params} (W42);
+  \draw (M4) edge  [bend left=0] node[] {params} (W42);
+  \draw (M4) edge  [bend left=20] node[] {params} (W43);
+  \draw (W41) edge [bend left=30] node[right=1mm] {$T_1$} (M4);
+  \draw (W42) edge [bend left=10] node[left=3mm] {$T_2$} (M4);
+  \draw (W43) edge [bend left=-10] node[left=3mm] {$T_3$} (M4);
+  \draw (W44) edge [bend left=-10] node[right=1mm] {$T_4$} (M4);
+  
+  
+  
+\end{tikzpicture}
+& \begin{tikzpicture}[
+  node distance=2.5cm,
+  squarednode/.style={rectangle, draw=black!60, fill=white, thick, minimum size=10mm},
+  every edge/.style={  % Sets the properties for each transition
+            draw,
+           ->,>=stealth,     % Makes edges directed with bold arrowheads
+           auto,
+           semithick}
+]
+  \node[squarednode] (M) {Master};
+  \node[squarednode] (W1) [below left=6cm and 4.5cm of M] {Worker 1};
+  \node[squarednode] (W2) [below=6cm of M, right=2cm of W1] {Worker  2};
+  \node[squarednode] (W3) [below=6cm of M, right=2cm of W2]  {Worker 3};
+  \node[squarednode] (W4) [below=6cm of M, right=2cm of W3]  {Worker 4};
+  \draw (M) edge  [bend left=-40] node[left=1mm] {params} (W1);
+  \draw (M) edge  [bend left=-20] node[] {params} (W2);
+  \draw (M) edge  [bend left=0] node[] {params} (W3);
+  \draw (M) edge  [bend left=20] node[] {params} (W4);
+  \draw (W1) edge [bend left=30] node[right=1mm] {$T_1$} (M);
+  \draw (W2) edge [bend left=10] node[left=3mm] {$T_2$} (M);
+  \draw (W3) edge [bend left=-10] node[left=3mm] {$T_3$} (M);
+  \draw (W4) edge [bend left=-10] node[right=1mm] {$T_4$} (M);
+\end{tikzpicture}
+
+    \end{tabular*}
+  \end{center}
+  \caption{Efficient Single Machine vs Multi Machine Parallelism}
+\end{figure}
