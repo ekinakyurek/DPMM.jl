@@ -56,11 +56,12 @@ run!(algo::DPMMAlgorithm,X,args...;o...)
 
 Setup parallel process, initialize required modules
 """
-function setup_workers(ncpu::Integer)
+function setup_workers(ncpu::Integer;seed=31)
     if nworkers() != ncpu
         @warn("setting up parallel processes, takes a while for once!")
         addprocs(ncpu; exeflags="--project=$(dir())") # enable threaded blass
-        @everywhere @eval Main using DPMM, SharedArrays, Distributed
+        @everywhere @eval Main using DPMM, SharedArrays, Distributed, Random
+        @everywhere Random.seed!($seed)
         @info "workers: $(Main.Distributed.workers()) initialized"
     end
 end

@@ -23,25 +23,24 @@ function parser(args)
          help = "number of data points"
          arg_type = Int
          default = 1000000
-     "--D"
+        "--D"
         help = "dimension of data"
         arg_type = Int
         default = 2
-     "--T"
-       help = "number of iterations"
-       arg_type = Int
-       default = 100
-      "--seed"
-       help = "seed for random number generator"
-       arg_type = Int
-       default = 11131994
-      "--discrete"
+        "--T"
+        help = "number of iterations"
+        arg_type = Int
+        default = 100
+        "--seed"
+        help = "seed for random number generator"
+        arg_type = Int
+        default = 31
+        "--discrete"
         action = :store_true
         help = "test on multinomial data"
-      "--runserials"
+        "--runserials"
         action = :store_true
         help = "run non parallel versions of the algorithm for comparison"
- 
     end
     return parse_args(args, s; as_symbols=true)
 end
@@ -51,103 +50,100 @@ const 𝒪 = parser(ARGS)
 𝒪[:α] = 𝒪[:alpha]
 
 if 𝒪[:discrete]
-    Random.seed!(11131994)
+    Random.seed!(𝒪[:seed])
     X = DPMM.generate_multinomial_data(𝒪[:N], 𝒪[:D], 𝒪[:K])
-    #gmodel = RandDiscreteMixture(𝒪[:K]; D=𝒪[:D])
 else
-    Random.seed!(11131994)
+    Random.seed!(𝒪[:seed])
     X = DPMM.generate_gaussian_data(𝒪[:N], 𝒪[:D], 𝒪[:K])
-    #gmodel = RandMixture(𝒪[:K]; D=𝒪[:D])
 end
-#Random.seed!(11131994)
-#X = rand(gmodel,𝒪[:N])
 
 ti1=ti2=ti3=0.0
 ti0=ti2=0.0
-if  𝒪[:runserials]
-    println("Benchmarking: ", CollapsedAlgorithm)
-    labels0,ti0 = fit(X; algorithm=CollapsedAlgorithm, quasi=false, T=10, ninit=𝒪[:K], benchmark=true)
-    println(length(unique(labels0)))
-    Random.seed!(11131994)
-    labels0,ti0 = fit(X; algorithm=CollapsedAlgorithm, quasi=false, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels0)))
-    println(ti0)
-   
-    println("Benchmarking: Q-", CollapsedAlgorithm) 
-    labels1,ti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true)
-    println(length(unique(labels1)))
-    Random.seed!(11131994)
-    labels1,ti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels1)))
-    println(ti1)
-    
+pti1=pti2=pti3=0.0
+if  𝒪[:runserials]    
     println("Benchmarking: ", DirectAlgorithm)
     labels2,ti2 = fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
-    println(length(unique(labels2)))
-    Random.seed!(11131994)
-    labels2,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels2)))
-    Random.seed!(11131994)
-    labels2,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels2)))
-    println(ti2)
+    println(ti2," ",length(unique(labels2)))
+    Random.seed!(𝒪[:seed])
+    labels2,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:K] , benchmark=true)
+    println(ti2," ",length(unique(labels2)))
+    Random.seed!(𝒪[:seed])
+    labels2,ti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:K] , benchmark=true)
+    println(ti2," ",length(unique(labels2)))
 
     println("Benchmarking: Q-", DirectAlgorithm)
+    Random.seed!(𝒪[:seed])
     labels20,ti20 = fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
-    println(length(unique(labels20)))
-    Random.seed!(11131994)
-    labels20,ti20 = fit(X; algorithm=DirectAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels20)))
-    Random.seed!(11131994)
-    labels20,ti20 = fit(X; algorithm=DirectAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels20)))
-    println(ti20)
+    println(ti20," ",length(unique(labels20)))
+    Random.seed!(𝒪[:seed])
+    labels20,ti20 = fit(X; algorithm=DirectAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:K] , benchmark=true)
+    println(ti20," ",length(unique(labels20)))
+    Random.seed!(𝒪[:seed])
+    labels20,ti20 = fit(X; algorithm=DirectAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:K] , benchmark=true)
+    println(ti20," ",length(unique(labels20)))
+
+    println("Benchmarking: ", CollapsedAlgorithm)
+    Random.seed!(𝒪[:seed])
+    labels0,ti0 = fit(X; algorithm=CollapsedAlgorithm, quasi=false, T=10, ninit=𝒪[:K], benchmark=true)
+    println(ti0," ",length(unique(labels0)))
+    Random.seed!(𝒪[:seed])
+    labels0,ti0 = fit(X; algorithm=CollapsedAlgorithm, quasi=false, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti0," ",length(unique(labels0)))
+   
+    println("Benchmarking: Q-", CollapsedAlgorithm)
+    Random.seed!(𝒪[:seed])
+    labels1,ti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true)
+    println(ti1," ",length(unique(labels1)))
+    Random.seed!(𝒪[:seed])
+    labels1,ti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti1," ",length(unique(labels1)))
+
     
-    println("Benchmarking: ", SplitMergeAlgorithm)
-    labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
-    println(length(unique(labels3)))
-    Random.seed!(11131994)
-    labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(length(unique(labels3)))
-    Random.seed!(11131994)
-    labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(ti3)
-    println(length(unique(labels3)))
+    # println("Benchmarking: ", SplitMergeAlgorithm)
+    # labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
+    # println(length(unique(labels3)))
+    # Random.seed!(𝒪[:seed])
+    # labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    # println(length(unique(labels3)))
+    # Random.seed!(𝒪[:seed])
+    # labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    # println(ti3)
+    # println(length(unique(labels3)))
 end
+
+println("Benchmarking: ", DirectAlgorithm)
+Random.seed!(𝒪[:seed])
+labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti2, " ", length(unique(labelsp2)))
+Random.seed!(𝒪[:seed])
+labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:K]÷2, benchmark=true, ncpu=𝒪[:ncpu])
+println(pti2, " ", length(unique(labelsp2)))
+Random.seed!(𝒪[:seed])
+labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:K]÷2, benchmark=true, ncpu=𝒪[:ncpu])
+println(pti2, " ", length(unique(labelsp2)))
 
 
 println("Benchmarking: ", CollapsedAlgorithm)
+Random.seed!(𝒪[:seed])
 labelsp1,pti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp1)))
-Random.seed!(11131994)
+println(pti1, " ",length(unique(labelsp1)))
+Random.seed!(𝒪[:seed])
 labelsp1,pti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp1)))
-Random.seed!(11131994)
+println(pti1, " ",length(unique(labelsp1)))
+Random.seed!(𝒪[:seed])
 labelsp1,pti1 = fit(X; algorithm=CollapsedAlgorithm, quasi=true, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(pti1)
-println(length(unique(labelsp1)))
+println(pti1, " ",length(unique(labelsp1)))
 
-println("Benchmarking: ", DirectAlgorithm)
-labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp2)))
-Random.seed!(11131994)
-labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp2)))
-Random.seed!(11131994)
-labelsp2,pti2 = fit(X; algorithm=DirectAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(pti2)
-println(length(unique(labelsp2)))
-
-println("Benchmarking: ", SplitMergeAlgorithm)
-labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp3)))
-Random.seed!(11131994)
-labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(length(unique(labelsp3)))
-Random.seed!(11131994)
-labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(pti3)
-println(length(unique(labelsp3)))
+# println("Benchmarking: ", SplitMergeAlgorithm)
+# labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+# println(length(unique(labelsp3)))
+# Random.seed!(𝒪[:seed])
+# labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+# println(length(unique(labelsp3)))
+# Random.seed!(𝒪[:seed])
+# labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+# println(pti3)
+# println(length(unique(labelsp3)))
 
 println("N\tD\tα\tK\tKinit\tCollapsed\tQCollapsed\tQCollapsed-P\tDirect\tDirect-P\tQDirect\tS-M\tS-M-P\t")
 print("$(𝒪[:N])\t$(𝒪[:D])\t$(𝒪[:alpha])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t")

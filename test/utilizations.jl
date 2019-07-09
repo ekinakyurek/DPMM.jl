@@ -34,14 +34,13 @@ function parser(args)
       "--seed"
        help = "seed for random number generator"
        arg_type = Int
-       default = 11131994
+       default = 31
       "--discrete"
         action = :store_true
         help = "test on multinomial data"
       "--runserials"
         action = :store_true
         help = "run non parallel versions of the algorithm for comparison"
- 
     end
     return parse_args(args, s; as_symbols=true)
 end
@@ -51,43 +50,44 @@ const 𝒪 = parser(ARGS)
 𝒪[:α] = 𝒪[:alpha]
 
 if 𝒪[:discrete]
-    Random.seed!(11131994)
+    Random.seed!(𝒪[:seed])
     X = DPMM.generate_multinomial_data(𝒪[:N], 𝒪[:D], 𝒪[:K])
-    #gmodel = RandDiscreteMixture(𝒪[:K]; D=𝒪[:D])
 else
-    Random.seed!(11131994)
+    Random.seed!(𝒪[:seed])
     X = DPMM.generate_gaussian_data(𝒪[:N], 𝒪[:D], 𝒪[:K])
-    #gmodel = RandMixture(𝒪[:K]; D=𝒪[:D])
 end
-#Random.seed!(11131994)
-#X = rand(gmodel,𝒪[:N])
 
 ti1=ti2=ti3=0.0
 ti0=ti2=0.0
 if 𝒪[:runserials]
-    fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
-    Random.seed!(11131994)
-    fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    Random.seed!(11131994)
+    Random.seed!(𝒪[:seed])
+    labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true)
+    println(ti3," ",length(unique(labels3)))
+    Random.seed!(𝒪[:seed])
     labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(ti3)
-    println(length(unique(labels3)))
+    println(ti3," ",length(unique(labels3)))
+    Random.seed!(𝒪[:seed])
     labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
-    println(ti3)
-    println(length(unique(labels3)))
+    println(ti3," ",length(unique(labels3)))
+    Random.seed!(𝒪[:seed])
+    labels3,ti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true)
+    println(ti3," ",length(unique(labels3)))
 end
 
 pti1=pti2=0.0
 println("Benchmarking: ", SplitMergeAlgorithm)
-fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
-Random.seed!(11131994)
-fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-Random.seed!(11131994)
-fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-Random.seed!(11131994)
+Random.seed!(𝒪[:seed])
+labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=10, ninit=𝒪[:K], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti3," ", length(unique(labelsp3)))
+Random.seed!(𝒪[:seed])
 labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
-println(pti3)
-println(length(unique(labelsp3)))
+println(pti3," ", length(unique(labelsp3)))
+Random.seed!(𝒪[:seed])
+labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti3," ", length(unique(labelsp3)))
+Random.seed!(𝒪[:seed])
+labelsp3,pti3 = fit(X; algorithm=SplitMergeAlgorithm, T=𝒪[:T], ninit=𝒪[:Kinit], benchmark=true, ncpu=𝒪[:ncpu])
+println(pti3," ", length(unique(labelsp3)))
 
 println("N\tD\tα\tK\tKinit\tCollapsed\tQCollapsed\tQCollapsed-P\tDirect\tDirect-P\tQDirect\tS-M\tS-M-P\t")
 print("$(𝒪[:N])\t$(𝒪[:D])\t$(𝒪[:alpha])\t$(𝒪[:K])\t$(𝒪[:Kinit])\t")

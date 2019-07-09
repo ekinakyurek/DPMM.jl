@@ -1,6 +1,5 @@
 """
        DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
-
        Class for DP Gaussian Mixture Models
     """
 struct DPGMM{T<:Real,D} <: AbstractDPModel{T,D}
@@ -10,9 +9,13 @@ end
 
 @inline prior(m::DPGMM) = m.θprior
 
-DPGMM(X::AbstractMatrix{T}; α::Real=1) where T<:Real =
-    DPGMM{T}(T(α), vec(mean(X,dims=2)), X*X'/size(X,2))
-    #DPGMM{T}(T(α), vec(mean(X,dims=2)),Matrix{T}(I,size(X,1),size(X,1)))
+function DPGMM(X::AbstractMatrix{T}; α::Real=1, strongprior::Bool=false) where T<:Real
+    if strongprior
+        DPGMM{T}(T(α), vec(mean(X,dims=2)), X*X'/size(X,2))
+    else
+        DPGMM{T}(T(α), vec(mean(X,dims=2)),Matrix{T}(I,size(X,1),size(X,1)))
+    end
+end
 
 DPGMM{T,D}(α::Real) where {T<:Real,D} =
     DPGMM{T,dim}(NormalWishart{T}(D),T(α))

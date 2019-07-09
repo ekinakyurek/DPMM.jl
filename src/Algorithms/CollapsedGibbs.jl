@@ -35,7 +35,7 @@ function CollapsedAlgorithm(X::AbstractMatrix{T};
                                 parallel::Bool=false,
                                 quasi::Bool=false, o...) where T
 
-    CollapsedAlgorithm{parallel, quasi}(modelType(X;α=α), ninit)
+    CollapsedAlgorithm{parallel, quasi}(modelType(X;α=α, strongprior=true), ninit)
 end
 
 run!(algo::CollapsedAlgorithm{false,false},X,args...;o...) =
