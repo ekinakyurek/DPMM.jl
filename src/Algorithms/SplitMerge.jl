@@ -1,7 +1,6 @@
 ###
 #### Interface
 ###
-
 """
     SplitMergeAlgorithm{P,Q} <: DPMMAlgorithm{P}
 
@@ -45,10 +44,12 @@ run!(algo::SplitMergeAlgorithm{false,M}, X, args...; o...) where M =
 run!(algo::SplitMergeAlgorithm{true,M}, X, args...;o...) where M =
     splitmerge_gibbs_parallel!(algo.model,X,args...;merge=M, o...)
 
-random_labels(X,algo::SplitMergeAlgorithm) =
+random_labels(X,algo::SplitMergeAlgorithm)  =
     map(l->(l,rand()>0.5),rand(1:algo.ninit,size(X,2)))
+
 create_clusters(X, algo::SplitMergeAlgorithm, labels) =
     SplitMergeClusters(algo.model,X,labels)
+
 empty_cluster(algo::SplitMergeAlgorithm) = nothing # undefined
 
 # Default algorithm for DPMM.jl is SplitMergeAlgorithm.
@@ -57,58 +58,77 @@ const DEFAULT_ALGO = SplitMergeAlgorithm
 ###
 #### Serial
 ###
-function splitmerge_gibbs!(model, X::AbstractMatrix, labels, clusters::GenericClusters,
-                            cluster0; merge::Bool=true, T=10, scene=nothing)
+function splitmerge_gibbs!(model::AbstractDPModel{V},
+                           X::AbstractMatrix,
+                           labels::AbstractVector,
+                           clusters::Dict{Int,<:SplitMergeCluster},
+                           cluster0; merge::Bool=true, T=10, scene=nothing) where V<:Real
+    maybe_split = maybeSplit(clusters)
     for t in 1:T
-        record!(scene,labels,t)
-        logπs          = logmixture_πs(model.α,clusters)
-        logsπs         = logsubcluster_πs(model.α/2,clusters)
-        maybe_split    = maybeSplit(clusters)
-        @inbounds for i=1:size(X,2) # make parallel
-            x = view(X,:,i)
+        #record!(scene,labels,t)
+        logπs  = logmixture_πs(model.α,clusters)
+        logsπs = logsubcluster_πs(model.α/2,clusters)
+        @inbounds for i=1:length(labels)
+            x = X[:,i]
             probs = RestrictedClusterProbs(logπs,clusters,x)
-            z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
+            z  = label_x2(clusters,rand(AliasTable(probs)))
             labels[i] = (z,SampleSubCluster(logsπs[z],clusters[z],x))
         end
         update_clusters!(model,X,clusters,labels)
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
-        materialize_splits!(model, X, labels, clusters, will_split)
-        gc_clusters!(clusters, maybe_split)
+        materialize_splits!(model, X, labels, clusters, will_split, maybe_split)
+        gc_clusters!(clusters)
         if merge
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
             materialize_merges!(model, labels, clusters, will_merge)
         end
+        maybeSplit(clusters,maybe_split)
     end
 end
 
-logsubcluster_πs(Δ::V, clusters::Dict{Int,<:SplitMergeCluster}) where V<:Real  =
-    Dict((k,log.(rand(DirichletCanon([V(population(c,Val(false)))+Δ,V(population(c,Val(true)))+Δ])))) for (k,c) in clusters)
+logsubcluster_πs(Δ::V, clusters::Dict{Int,<:SplitMergeCluster}) where V<:Real =
+    Dict{Int,Tuple{V,V}}((k,randlogdir(GLOBAL_RNG,V(c.nr)+Δ,V(c.nl)+Δ)) for (k,c) in clusters)
 
 """
 
     RestrictedClusterProbs(πs::AbstractVector{V}, clusters::Dict,  x::AbstractVector) where V<:Real
-
+    
 Returns normalized probability vector for a data point being any cluster
-"""
+    """
 function RestrictedClusterProbs(logπs::AbstractVector{V}, clusters::GenericClusters,
-                                    x::AbstractVector) where V<:Real
-    p = Array{V,1}(undef,length(clusters))
+                                x::AbstractVector) where V<:Real
+    p = Vector{V}(undef,length(clusters))
     max = typemin(V)
     for (j,c) in enumerate(values(clusters))
         @inbounds s = p[j] = logπs[j] + logαpdf(c,x)
-        max = s>max ? s : max
+        max = ifelse(s > max,s,max)
     end
-    pc = exp.(p .- max)
-    return pc ./ sum(pc)
+    s = zero(V)
+    @simd for i in eachindex(p)
+        @inbounds s += p[i] = exp(p[i]-max)
+    end
+    return p ./ s
 end
 
 function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster})
     s = Dict{Int,Bool}()
     for (k,c) in clusters
-        llavg = sum(c.llh_hist)/length(c.llh_hist)
-        s[k]  = llavg != -Inf && llavg-last(c.llh_hist)<1e-2
+        hist = c.llh_hist
+        s[k]  = first(hist) != -Inf && sum(hist)/length(hist) - last(hist) < 1e-2
     end
     return s
+end
+
+function maybeSplit(clusters::Dict{Int,<:SplitMergeCluster}, maybe_split::Dict{Int,Bool})
+    for (k,c) in clusters
+        if !get!(maybe_split,k,false)
+            hist = c.llh_hist
+            if first(hist) != -Inf
+                maybe_split[k]  = sum(hist)/length(hist) - last(hist) < 1e-2
+            end
+        end
+    end
+    return maybe_split
 end
 
 """
@@ -116,15 +136,16 @@ end
 
 Returns normalized probability vector for a data point being right or left subcluster
 """
-@inline function SampleSubCluster(logπs::Vector{V}, cluster::SplitMergeCluster,
-                                    x::AbstractVector) where V<:Real
-    p1 = logπs[1] + logαpdf(cluster,x, Val(false))
-    p2 = logπs[2] + logαpdf(cluster,x, Val(true))
+function SampleSubCluster(logπs::Tuple{V,V}, cluster::SplitMergeCluster,
+                          x::AbstractVector) where V<:Real
+    p1 = first(logπs) + logαpdf(cluster,x,Val(false))
+    p2 = last(logπs)  + logαpdf(cluster,x,Val(true))
+    s  = rand()
     if p1>p2
-        return rand(GLOBAL_RNG) > (1/(1+exp(p2-p1)))
+        return s > one(V)/(one(V)+exp(p2-p1))
     else
         p = exp(p1-p2)
-        return rand(GLOBAL_RNG) > (p/(p+1))
+        return s > p/(p+one(V))
     end
 end
 
@@ -133,8 +154,8 @@ function update_clusters!(m::AbstractDPModel, X::AbstractMatrix, clusters::Gener
                             labels::AbstractVector{Tuple{Int,Bool}})
     for (k,c) in clusters
         indices = get_cluster_inds(k,labels)
-        right   = suffstats(m,X[:,get_right_inds(indices,labels)])
-        left    = suffstats(m,X[:,get_left_inds(indices,labels)])
+        @inbounds right   = suffstats(m,X[:,get_right_inds(indices,labels)])
+        @inbounds left    = suffstats(m,X[:,get_left_inds(indices,labels)])
         clusters[k] = SplitMergeCluster(c, right+left, right, left; llh_hist=c.llh_hist)
     end
     return clusters
@@ -143,8 +164,8 @@ end
 function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
                         X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},
                         maySplit::Dict{Int,Bool}) where T
-    α    = m.α
-    logα = log(α)
+    α = m.α
+    cnstnt = -log(α)+lgamma(α)-2*lgamma(0.5*α)-log(100)
     merge_with = Dict{Int,Int}()
     ckeys = collect(keys(clusters))
     for i=1:length(ckeys)
@@ -158,31 +179,37 @@ function propose_merges(m::AbstractDPModel{T}, clusters::GenericClusters,
             s = s1+s2
             p  = posterior(m,s)
             prior = m.θprior
-            logH = -logα+lgamma(α)-2*lgamma(0.5*α)-log(100)+
-                    lgamma(s.n)-lgamma(s.n+α)+
-                    lgamma(s1.n+0.5*α)-lgamma(s1.n) +
-                    lgamma(s2.n+0.5*α)-lgamma(s2.n)+
-                    lmllh(prior,p,s.n)-lmllh(prior,c1.post,s1.n)-
-                    lmllh(prior,c2.post,s2.n)
-
+            logH = cnstnt +
+                lgamma(s.n)-lgamma(s.n+α)+
+            lgamma(s1.n+0.5*α)-lgamma(s1.n) +
+                lgamma(s2.n+0.5*α)-lgamma(s2.n)+
+            lmllh(prior,p,s.n)-lmllh(prior,c1.post,s1.n)
+            -lmllh(prior,c2.post,s2.n)
+            
             if logH>0 || logH > log(rand())
                 merge_with[k2] = k1
-                break;
+                break
             end
         end
     end
     return merge_with
 end
 function propose_splits!(m::AbstractDPModel, X::AbstractMatrix, labels::AbstractVector{Tuple{Int,Bool}},
-                        clusters::GenericClusters, maybe_split::Dict{Int,Bool})
+                         clusters::Dict{Int,<:SplitMergeCluster}, maybe_split::Dict{Int,Bool})
     logα = log(m.α)
     will_split = Dict{Int,Bool}()
     for (k,c) in clusters
         if maybe_split[k]
             if c.nr == 0 || c.nl == 0
-                c = reset_cluster!(m,X,labels,clusters,k)
+                reset_cluster!(m,X,labels,clusters,k)
+                will_split[k] = false
+                continue
             end
-            logH = logα+lgamma(population(c,Val(false)))+lgamma(population(c,Val(true)))-lgamma(population(c))+c.llhs[2]+c.llhs[3]-c.llhs[1]
+            logH = logα+lgamma(c.nr)+
+                   lgamma(c.nl)-
+                   lgamma(c.n)+
+            c.llhs[2]+c.llhs[3]-c.llhs[1]
+            
             will_split[k] = (logH>0 || logH>log(rand()))
         else
             will_split[k] = false
@@ -194,15 +221,16 @@ end
 function reset_cluster!(model::AbstractDPModel{V,D},
                         X::AbstractMatrix,
                         labels::AbstractVector{Tuple{Int,Bool}},
-                        clusters::GenericClusters,
+                        clusters::Dict{Int,<:SplitMergeCluster},
                         key::Int) where {V<:Real,D}
     indices = get_cluster_inds(key,labels)
     for i in indices
         @inbounds labels[i] = (key,rand()>0.5)
     end
-    sr = suffstats(model,view(X,:,get_right_inds(indices,labels)))
-    sl = suffstats(model,view(X,:,get_left_inds(indices,labels)))
-    clusters[key] = SplitMergeCluster(clusters[key], sr+sl, sr, sl)
+    sr = suffstats(model,X[:,get_right_inds(indices,labels)])
+    sl = suffstats(model,X[:,get_left_inds(indices,labels)])
+    c  = clusters[key]
+    clusters[key] = SplitMergeCluster(c,c.s,sr,sl)
 end
 
 
@@ -210,26 +238,36 @@ function get_new_keys(will_split::Dict{Int,Bool})
     kmax  = maximum(keys(will_split))
     nkeys = Dict{Int,Int}()
     for (k,ws) in will_split
-        nkeys[k] = ws ? (kmax+=1) : k
+        if ws
+            nkeys[k] = kmax+=1
+        else
+            nkeys[k] = k
+        end
     end
     return nkeys
 end
 
-function materialize_splits!(model, X, labels, clusters, will_split)
+function materialize_splits!(model::AbstractDPModel,
+                             X::AbstractMatrix,
+                             labels::AbstractVector,
+                             clusters::Dict{Int,<:SplitMergeCluster}, will_split::Dict{Int,Bool}, maybe_split::Dict{Int,Bool})
     new_keys  = get_new_keys(will_split)
-    old_keys  = collect(keys(clusters))
-    for k in old_keys
+    for k in collect(keys(clusters))
+        c = clusters[k]
         if will_split[k]
             newkey = new_keys[k]
-            clusters[k], clusters[newkey] = split_cluster!(model, X, labels, clusters[k], k, newkey)
-        else
-            c = clusters[k]
-            if c.n != 0
-                clusters[k] = SplitMergeCluster(population(c), population(c,Val(false)), population(c,Val(true)),c.s,
-                                                rand(c.post), rand(c.rightpost), rand(c.leftpost),
-                                                c.post, c.rightpost, c.leftpost,
-                                                c.llhs, c.llh_hist, c.prior)
-            end
+            maybe_split[k] = false
+            maybe_split[newkey] = false
+            clusters[k], clusters[newkey] = split_cluster!(model, X, labels, c , k, newkey)
+        elseif population(c) != 0
+            clusters[k] = SplitMergeCluster(population(c), population(c,Val(false)), population(c,Val(true)), c.s,
+                                            rand(c.post),
+                                            rand(c.rightpost),
+                                            rand(c.leftpost),
+                                            c.post,
+                                            c.rightpost,
+                                            c.leftpost,
+                                            c.llhs, c.llh_hist, c.prior)
         end
     end
 end
@@ -238,49 +276,41 @@ function materialize_merges!(model, labels, clusters, will_merge)
     for (k1,k2) in will_merge
         indices = get_cluster_inds(k1,k2,labels)
         for i in indices
-            @inbounds labels[i] = (k1,labels[i][1]==k2) # assign k2 to left
+            @inbounds labels[i] = (k1,first(labels[i])==k2) # assign k2 to left
         end
-        sr = clusters[k1].s
-        sl = clusters[k2].s
+        sr, sl = clusters[k1].s, clusters[k2].s
         clusters[k1] = SplitMergeCluster(model, sr+sl, sr, sl)
         delete!(clusters,k2)
     end
 end
 
-function gc_clusters!(clusters, maybe_split)
+function gc_clusters!(clusters)
     for (k,c) in clusters
-        if c.n == 0
+        if population(c) == 0
             delete!(clusters,k)
-        else
-            if !haskey(maybe_split,k)
-                maybe_split[k] = false
-            end
         end
     end
 end
 
 
-function split_cluster!(model::AbstractDPModel{V,D}, X::AbstractMatrix,
-                        labels::AbstractVector{Tuple{Int,Bool}}, cluster::SplitMergeCluster,
-                        kold::Int, knew::Int) where {V,D}
+function split_cluster!(model::AbstractDPModel,
+                        X::AbstractMatrix,
+                        labels::AbstractVector{Tuple{Int,Bool}},
+                        cluster::SplitMergeCluster,
+                        kold::Int,knew::Int)
     split_indices!(kold,knew,labels)
     return ntuple(2) do j
         k = j==1 ? kold : knew
         indices = get_cluster_inds(k, labels)
-        sr = suffstats(model,view(X,:,get_right_inds(indices,labels)))
-        sl = suffstats(model,view(X,:,get_left_inds(indices,labels)))
+        @inbounds sr = suffstats(model,X[:,get_right_inds(indices,labels)])
+        @inbounds sl = suffstats(model,X[:,get_left_inds(indices,labels)])
         SplitMergeCluster(model, sr+sl, sr, sl) #FIXME: we know sr+sl from $cluster$
     end
 end
 
 function split_indices!(kold::Int, knew::Int, labels::AbstractVector{Tuple{Int,Bool}})
-    indices = get_cluster_inds(kold, labels)
-    @inbounds for i in indices
-        if labels[i][2]
-            labels[i] = (knew,rand()>0.5)
-        else
-            labels[i] = (kold,rand()>0.5)
-        end
+    for i in get_cluster_inds(kold, labels)
+        @inbounds  labels[i] = ((last(labels[i]) ? knew : kold), rand()>0.5)
     end
 end
 
@@ -297,11 +327,11 @@ end
 #### Parallel
 ###
 
-function splitmerge_parallel!(logπs, logsπs, X, range, labels, clusters)
-    for i=1:size(X,2)
-        x = view(X,:,i)
+function splitmerge_parallel!(logπs, logsπs, X::AbstractMatrix, range::AbstractRange, labels, clusters)
+    @inbounds for i=1:length(range)
+        x = X[:,i]
         probs = RestrictedClusterProbs(logπs,clusters,x)
-        z  = label_x2(clusters,rand(GLOBAL_RNG,AliasTable(probs)))
+        z  = label_x2(clusters,rand(AliasTable(probs)))
         labels[range[i]] = (z,SampleSubCluster(logsπs[z],clusters[z],x))
     end
     return SuffStats(Main._model, X, convert(Array,labels[range]))
@@ -324,38 +354,39 @@ function update_clusters!(m::AbstractDPModel, clusters::Dict, stats::Dict{Int,<:
 end
 
 function splitmerge_gibbs_parallel!(model, X::AbstractMatrix, labels::SharedArray, clusters, empty_cluster; merge=true, T=10, scene=nothing)
-    for t in 1:T
-        record!(scene,labels,t)
-        logπs          = logmixture_πs(model.α,clusters)
-        logsπs         = logsubcluster_πs(model.α/2,clusters)
-        maybe_split = maybeSplit(clusters)
-        stats = Dict{Int,Tuple{<:SufficientStats, <:SufficientStats}}[]
+    maybe_split = maybeSplit(clusters)
+    stats = Vector{Dict{Int,Tuple{stattype(model),stattype(model)}}}(undef,length(procs(labels)))
+    @inbounds for t in 1:T
+        #record!(scene,labels,t)
+        logπs   = logmixture_πs(model.α,clusters)
+        logsπs  = logsubcluster_πs(model.α/2,clusters)
         @sync begin
-            for p in procs(labels)
-                @async push!(stats,remotecall_fetch(splitmerge_parallel!,p,labels,clusters,logπs,logsπs))
+            for (i,p) in enumerate(procs(labels))
+                @async stats[i] = remotecall_fetch(splitmerge_parallel!,p,labels,clusters,logπs,logsπs)
             end
         end
         update_clusters!(model, clusters, gather_stats(stats))
         will_split = propose_splits!(model, X, labels, clusters, maybe_split)
-        materialize_splits!(model, X, labels, clusters, will_split)
-        gc_clusters!(clusters, maybe_split)
+        materialize_splits!(model, X, labels, clusters, will_split, maybe_split)
+        gc_clusters!(clusters)
         if merge
             will_merge  = propose_merges(model, clusters, X, labels, maybe_split)
             materialize_merges!(model, labels, clusters, will_merge)
         end
+        maybeSplit(clusters, maybe_split)
     end
 end
 
 #Gathers parallely collected sufficient stats
-function gather_stats(stats::Array{Dict{Int, Tuple{<:SufficientStats, <:SufficientStats}},1})
+function gather_stats(stats::Vector{Dict{Int,Tuple{T,T}}}) where T<:SufficientStats
     gstats = empty(first(stats))
     for s in stats
         for (k,v) in s
             if haskey(gstats,k)
                 gs = gstats[k]
-                gstats[k] = (gs[1]+v[1], gs[2]+v[2])
+                gstats[k] = (first(gs)+first(v),last(gs)+last(v))
             else
-                gstats[k] = (v[1], v[2])
+                gstats[k] = v
             end
         end
     end

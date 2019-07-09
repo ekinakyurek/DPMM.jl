@@ -36,7 +36,7 @@ function DirectAlgorithm(X::AbstractMatrix{T};
                               α::Real=1, ninit::Int=1,
                               parallel::Bool=false,
                               quasi::Bool=false, o...) where T
-    DirectAlgorithm{parallel, quasi}(modelType(X;α=α), ninit)
+    DirectAlgorithm{parallel, quasi}(modelType(X;α=α,strongprior=true), ninit)
 end
 
 @inline run!(algo::DirectAlgorithm{false,false},X, args...;o...) =

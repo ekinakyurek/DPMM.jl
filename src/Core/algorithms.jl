@@ -56,11 +56,12 @@ run!(algo::DPMMAlgorithm,X,args...;o...)
 
 Setup parallel process, initialize required modules
 """
-function setup_workers(ncpu::Integer)
+function setup_workers(ncpu::Integer;seed=31)
     if nworkers() != ncpu
         @warn("setting up parallel processes, takes a while for once!")
         addprocs(ncpu; exeflags="--project=$(dir())") # enable threaded blass
-        @everywhere @eval Main using DPMM, SharedArrays, Distributed
+        @everywhere @eval Main using DPMM, SharedArrays, Distributed, Random
+        @everywhere Random.seed!($seed)
         @info "workers: $(Main.Distributed.workers()) initialized"
     end
 end
@@ -80,9 +81,9 @@ function initialize_clusters(X::AbstractMatrix, algo::DPMMAlgorithm{P}) where P
         labels = SharedArray(labels)
         @everywhere ws _model    = $(algo.model)
         @everywhere ws _cluster0 = $cluster0
-        @sync for p in procs(labels)
-            inds = remotecall_fetch(localindices,p,labels)
-            @async @everywhere [p] _X = $(X[:,inds])
+        @sync for (i,p) in enumerate(procs(labels))
+            xworker = X[:,range_1dim(labels,i)]
+            ref = @spawnat(p, Core.eval(Main, Expr(:(=), :_X, xworker)))
         end
     end
     return labels, clusters, cluster0

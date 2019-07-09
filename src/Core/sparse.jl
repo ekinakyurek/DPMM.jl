@@ -1,3 +1,4 @@
+import SparseArrays: nnz, nonzeroinds, nonzeros
 """
     DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
 
@@ -18,12 +19,24 @@ struct DPSparseVector{Tv,Ti<:Integer} <: AbstractSparseVector{Tv,Ti}
     end
 end
 
+function Vector(s::DPSparseVector{Tv,<:Any}) where Tv
+    nzval = nonzeros(s)
+    nzind = nonzeroinds(s)
+    x = zeros(Tv,nnz(s))
+    for i in eachindex(nzval)
+        @inbounds x[nzind[i]] =nzval[i]
+    end
+    return x
+end
+
 DPSparseVector(n::Integer, nzind::Vector{Ti}, nzval::Vector{Tv}) where {Tv,Ti} =
     DPSparseVector{Tv,Ti}(n, nzind, nzval)
 
 DPSparseVector(x::SparseVector{Tv,Ti}) where {Tv,Ti} =
     DPSparseVector{Tv,Ti}(x.n, x.nzind, x.nzval)
 
+Base.size(m::DPSparseVector{Int64,Int64}) = (m.n,)
+Base.length(m::DPSparseVector{Int64,Int64}) = m.n
 struct DPSparseMatrix{Tv,Ti<:Integer} <: AbstractSparseMatrix{Tv,Ti}
     m::Int                               # Number of rows
     n::Int                               # Number of columns
@@ -45,12 +58,15 @@ end
 @inline size(X::DPSparseMatrix) = (X.m,X.n)
 @inline length(x::DPSparseVector) = x.n
 @inline getindex(X::DPSparseMatrix, ::Colon, inds::Vector{<:Integer}) = DPSparseMatrix(X.m,length(inds),X.data[inds])
+@inline getindex(X::DPSparseMatrix, ::Colon, inds::AbstractRange) = DPSparseMatrix(X.m,length(inds),X.data[inds])
 @inline getindex(X::DPSparseMatrix, ::Colon, ind::Integer) = X.data[ind]
 @inline Base.view(X::DPSparseMatrix, ::Colon, ind::Integer) = X[:,ind]
 @inline Base.view(X::DPSparseMatrix, ::Colon, inds::Vector{<:Integer}) = X[:,inds]
+@inline Base.view(X::DPSparseMatrix, ::Colon, inds::AbstractRange) = X[:,inds]
 @inline getindex(X::DPSparseMatrix, ind1::Integer, ind2::Integer) = X.data[ind2][ind1]
 @inline nonzeroinds(x::DPSparseVector) = x.nzind
 @inline nonzeros(x::DPSparseVector)    = x.nzval
+@inline nnz(x::DPSparseVector)    = x.n
 
 function getindex(x::DPSparseVector{Tv,<:Any}, ind::Integer) where Tv
     inds = x.nzind

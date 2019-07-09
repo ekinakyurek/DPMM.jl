@@ -36,7 +36,7 @@ DPMM.logmixture_πs
 
 ## Distributions
 ```@docs
-DPMM.NormalInverseWishart
+DPMM.NormalWishart
 DPMM.MvNormalFast
 DPMM.DirichletFast
 DPMM.MultinomialFast

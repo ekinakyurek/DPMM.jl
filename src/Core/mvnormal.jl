@@ -15,18 +15,15 @@ MvNormalFast(μ::AbstractVector{<:Real}, J::Matrix{<:Real}) = MvNormalFast(μ, P
 MvNormalFast(μ::AbstractVector{<:Real}, J::Union{Symmetric{<:Real}, Hermitian{<:Real}}) = MvNormalFast(μ, PDMat(J))
 MvNormalFast(μ::AbstractVector{<:Real}, J::Diagonal{<:Real}) = MvNormalFast(μ, PDiagMat(diag(J)))
 
-function MvNormalFast(μ::AbstractVector, J::AbstractPDMat)
-    R = Base.promote_eltype(μ, J)
-    MvNormalFast(convert(AbstractArray{R}, μ), convert(AbstractArray{R}, J))
-end
+# function MvNormalFast(μ::AbstractVecto{T}, J::AbstractPDMat{T}) where T <: Real
+#     MvNormalFast(μ, J)
+# end
 
-function MvNormalFast(μ::AbstractVector{T}, J::AbstractPDMat{T}) where T<: Real
+MvNormalFast(μ::AbstractVector, J::AbstractPDMat) = 
     MvNormalFast(μ,J,mvnormal_c0(μ,J))
-end
 
-function MvNormalFast(J::Cov) where {T, Cov<:AbstractPDMat{T}}
+MvNormalFast(J::Cov) where {T, Cov<:AbstractPDMat{T}} = 
     MvNormalFast(ZeroVector(T, dim(J)), J)
-end
 
 MvNormalFast(J::Matrix{<:Real}) = MvNormalFast(PDMat(J))
 
@@ -50,22 +47,21 @@ sqmahal!(r::AbstractVector, d::MvNormalFast, x::AbstractMatrix) = quad!(r, d.J, 
 @inline _logpdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T   = logαpdf(d,x)
 
 function logαpdf(d::MvNormalFast{T}, x::AbstractVector{T}) where T
-    D = length(x)
-    μ = d.μ
-    J = d.J.mat
-    s = zero(T)
-
+    D = length(d)
+    μ = mean(d)
     y = Vector{T}(undef,D)
-    @fastmath @simd for i=1:D
+    @simd for i=1:D
         @inbounds y[i] = x[i]-μ[i]
     end
-
-    @fastmath @simd for i=1:D
-        for j=1:D
-            @inbounds s += y[i] * y[j] * J[i, j]
+    s = zero(T)
+    J = d.J.mat
+    for j=1:D
+        s_j = zero(T)
+        @simd for i=1:D
+            @inbounds s_j += y[i] * J[i,j]
         end
+        @inbounds s += y[j] * s_j
     end
-
     return d.c0 - s/T(2)
 end
 ####
@@ -77,12 +73,12 @@ mvnormal_c0(μ::AbstractVector, J::AbstractPDMat) =
 
 ## Sample normal with mean and precision matrix
 
-randNormal(μ::AbstractVector{T}, J::AbstractPDMat{T}) where T =
+randNormal(μ::AbstractVector, J::AbstractPDMat) =
     randNormal!(μ, J, similar(μ))
 
 
 function randNormal!(μ::AbstractVector{T}, J::AbstractPDMat{T}, x::AbstractVector{T}) where T
-    for i in eachindex(x)
+    for i=1:length(x)
         @inbounds x[i] = randn()
     end
     return add!(unwhiten_winv!(J, x), μ)

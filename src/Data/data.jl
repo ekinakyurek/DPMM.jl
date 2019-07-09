@@ -14,6 +14,17 @@ function RandMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
 end
 
 """
+    RandDiscreteMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
+
+Randomly generates K Gaussian
+"""
+function RandDiscreteMixture(K::Integer;D::Int=2,πs::Vector{T}=ones(K)/K) where T<:Real
+    comps = [Multinomial(rand(1:1000), rand(Dirichlet(ones(D)))) for i=1:K]
+    return MixtureModel(comps,πs)
+end
+
+
+"""
     GridMixture(L::Integer; πs::Vector{T}=ones(L*L)/(L*L)) where T<:Real
 
 Generates LxL grid Gaussians
@@ -58,4 +69,46 @@ end
 function GridMultinomial(πs::Vector{T}=[0.4,0.4,0.2]) where T<:Real
     comps = [Multinomial(2,[1.0,0.0]), Multinomial(2,[0.0,1.0]), Multinomial(2,[0.5,0.5])]
     return MixtureModel(vec(comps),πs)
+end
+
+
+function generate_gaussian_data(N::Int64, D::Int64, K::Int64)
+	x = randn(D,N)
+	tpi = rand(Dirichlet(ones(K)))
+	tzn = rand(Multinomial(N,tpi))  #number of points in each cluster, e.g. [2, 2, 6]
+	tz = zeros(N)
+	tmean = zeros(D,K)
+	tcov = zeros(D,D,K)
+	ind = 1
+	for i=1:length(tzn)
+		indices = ind:ind+tzn[i]-1
+		tz[indices] .= i
+		tmean[:,i] .= rand(MvNormal(zeros(D), 100*Matrix{Float64}(I,D,D)))  #sample cluster mean
+		tcov[:,:,i] .= rand(InverseWishart(D+2, Matrix{Float64}(I,D,D)))    #sample cluster covariance
+		# T = chol(slice(tcov,:,:,i))
+		# x[:,indices] = broadcast(+, T'*x[:,indices], tmean[:,i]);
+		d = MvNormal(tmean[:,i], tcov[:,:,i])  #form cluster distribution
+		for j=indices
+			x[:,j] .= rand(d)  #generate cluster point
+		end
+		ind += tzn[i]
+	end
+    x
+end
+
+function generate_multinomial_data(N::Int64, D::Int64, K::Int64)
+    data = zeros(Int,N,D)
+    for k = 1:K
+        tpi = rand(Dirichlet(ones(D)*0.05))
+        istart = round(Int64, floor((N/K)*(k-1)) + 1)
+        istop = round(Int64, floor((N/K)*k))
+
+        num_words = rand(1:1000, istop-istart+1, 1)
+        for idx = istart:istop
+            num_words = rand(1:1000)
+            data[idx,:] =  rand(Multinomial(num_words, tpi))
+        end
+
+    end
+    DPSparseMatrix(sparse(permutedims(data,(2,1))))
 end

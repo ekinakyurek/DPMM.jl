@@ -1,7 +1,9 @@
 module DPMM
-using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats #Makie
+using Distributions, ColorBrewer, Colors, Distributed, SharedArrays, SparseArrays, LinearAlgebra, PDMats, Random #Makie
 
-import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~,@propagate_inbounds, @fastmath
+import Base: length, convert, size, *, +, -, getindex, sum, length, rand,~,@propagate_inbounds
+import SharedArrays: range_1dim
+
 @inline ~(x::Distribution) = rand(x)
 
 const colorpalette  = RGBA.(palette("Set3", 12))
@@ -14,7 +16,7 @@ import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon,
                       mean, cov, params, invcov, logdetcov, sqmahal, sqmahal!,
                       partype, unwhiten_winv!,log2π, mvnormal_c0, _logpdf, lgamma,
                       xlogy, NoArgCheck, suffstats, SufficientStats, GenericMvTDist,
-                      AliasTable, GLOBAL_RNG
+                      AliasTable, GLOBAL_RNG, ZeroVector
 
 import PDMats: unwhiten!, add!, quad, quad!
 
@@ -25,11 +27,11 @@ dir(path...) = joinpath(dirname(@__DIR__),path...)
 
 include("Core/linearalgebra.jl")
 include("Core/mvnormal.jl"); export MvNormalFast
-include("Core/niw.jl"); export NormalInverseWishart
+include("Core/niw.jl"); export NormalWishart
 include("Core/sparse.jl"); export DPSparseMatrix, DPSparseVector
 include("Core/dirichletmultinomial.jl"); export DirichletFast
 include("Core/algorithms.jl"); export run!, setup_workers, initialize_clusters
-include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture
+include("Data/data.jl");  export rand_with_label, RandMixture, GridMixture, RandDiscreteMixture
 include("Data/nytimes.jl"); export readNYTimes
 include("Data/visualize.jl"); export setup_scene
 include("Models/model.jl")
@@ -71,6 +73,7 @@ function fit(X::AbstractMatrix; algorithm=DEFAULT_ALGO, ncpu=1, T=3000, benchmar
     labels, clusters, cluster0 = initialize_clusters(X,algo)
     tres = @elapsed run!(algo, X, labels, clusters, cluster0; T=T, scene=scene)
     @info "$tres second passed"
+    labels = first.(labels) # not return subclusters
     if benchmark
         return labels, tres
     end
